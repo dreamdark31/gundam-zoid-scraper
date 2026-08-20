@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parts Catalog — Gundam &amp; Zoid Price Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --paper:#EEEDE6;
+  --paper-raised:#F6F5F0;
+  --grid:#D7DCE2;
+  --ink:#1B2A41;
+  --ink-soft:#4A5A70;
+  --blue:#2F5D8A;
+  --rust:#C4432B;
+  --green:#3F7A5C;
+  --muted:#8A8F94;
+  --line:#C7CDD3;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 28px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/28px 100%,
+    var(--paper);
+  font-family:'Inter',sans-serif;
+  color:var(--ink);
+  min-height:100vh;
+  padding:32px 20px 80px;
+}
+
+.wrap{max-width:920px;margin:0 auto;}
+
+/* Header */
+.header{
+  border-bottom:3px solid var(--ink);
+  padding-bottom:16px;
+  margin-bottom:24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.header .eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:.14em;
+  color:var(--rust);
+  font-weight:700;
+  text-transform:uppercase;
+}
+.header h1{
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(26px,5vw,38px);
+  font-weight:800;
+  margin:2px 0 0;
+  letter-spacing:-.01em;
+}
+.header .sub{
+  font-size:13px;
+  color:var(--ink-soft);
+  max-width:340px;
+  text-align:right;
+  line-height:1.4;
+}
+
+/* Toolbar */
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-bottom:22px;
+}
+.tabs{display:flex;gap:6px;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.tab{
+  padding:7px 12px;
+  border:1.5px solid var(--ink);
+  background:transparent;
+  color:var(--ink);
+  cursor:pointer;
+  font-family:inherit;
+  font-weight:600;
+  letter-spacing:.03em;
+}
+.tab.active{background:var(--ink);color:var(--paper);}
+.spacer{flex:1;}
+select, input[type=text], input[type=search]{
+  font-family:'Inter',sans-serif;
+  font-size:13px;
+  border:1.5px solid var(--line);
+  background:var(--paper-raised);
+  color:var(--ink);
+  padding:7px 10px;
+}
+input[type=search]{min-width:180px;}
+.btn{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.03em;
+  background:var(--rust);
+  color:#fff;
+  border:none;
+  padding:9px 14px;
+  cursor:pointer;
+}
+.btn:hover{background:#a8341f;}
+.btn.secondary{
+  background:transparent;
+  color:var(--ink);
+  border:1.5px solid var(--ink);
+}
+.btn.secondary:hover{background:var(--ink);color:var(--paper);}
+.btn.small{padding:5px 10px;font-size:11px;}
+
+/* Empty state */
+.empty{
+  border:2px dashed var(--line);
+  padding:48px 20px;
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:14px;
+}
+.empty b{display:block;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--ink);margin-bottom:6px;}
+
+/* Grid of cards */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:18px;
+}
+
+.card{
+  background:var(--paper-raised);
+  border:1.5px solid var(--ink);
+  position:relative;
+  padding:16px 16px 14px;
+}
+.card::before{
+  content:'';
+  position:absolute;
+  top:-7px;left:20px;
+  width:14px;height:14px;
+  background:var(--paper);
+  border:1.5px solid var(--ink);
+  border-radius:50%;
+}
+.card-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  border-bottom:1px dashed var(--line);
+  padding-bottom:10px;
+  margin-bottom:10px;
+}
+.partno{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.08em;
+}
+.badge{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
+  padding:2px 7px;
+  border:1px solid currentColor;
+  text-transform:uppercase;
+}
+.badge.gundam{color:var(--blue);}
+.badge.zoid{color:var(--green);}
+.badge.other{color:var(--muted);}
+
+.kit-name{font-size:16px;font-weight:700;margin:0 0 2px;}
+.kit-grade{font-size:12px;color:var(--ink-soft);margin-bottom:2px;}
+.kit-notes{font-size:12px;color:var(--muted);font-style:italic;}
+
+.price-row{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  margin:12px 0 8px;
+}
+.lowest-price{
+  font-family:'JetBrains Mono',monospace;
+  font-size:26px;
+  font-weight:800;
+  color:var(--green);
+}
+.lowest-tag{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  background:var(--green);
+  color:#fff;
+  padding:2px 6px;
+  font-weight:700;
+}
+.no-price{font-size:13px;color:var(--muted);margin:12px 0 8px;}
+.lowest-seller{font-size:12px;color:var(--ink-soft);margin-bottom:10px;}
+.lowest-seller a{color:var(--blue);}
+
+.card-actions{display:flex;gap:8px;margin-bottom:6px;}
+
+.history{
+  margin-top:10px;
+  border-top:1px dashed var(--line);
+  padding-top:10px;
+}
+.history-toggle{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--ink-soft);
+  cursor:pointer;
+  background:none;
+  border:none;
+  padding:0;
+  text-decoration:underline;
+}
+.steps{margin-top:8px;position:relative;padding-left:16px;}
+.steps::before{
+  content:'';
+  position:absolute;left:4px;top:4px;bottom:4px;
+  width:1px;background:var(--line);
+}
+.step{
+  position:relative;
+  font-size:12px;
+  padding:4px 0 4px 10px;
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+.step::before{
+  content:'';
+  position:absolute;left:-16px;top:9px;
+  width:7px;height:7px;border-radius:50%;
+  background:var(--paper-raised);
+  border:1.5px solid var(--ink-soft);
+}
+.step.lowest::before{background:var(--green);border-color:var(--green);}
+.step .meta{color:var(--muted);}
+.step .price{font-family:'JetBrains Mono',monospace;font-weight:700;}
+.step .del{
+  cursor:pointer;color:var(--rust);font-size:11px;
+  background:none;border:none;font-family:'JetBrains Mono',monospace;
+}
+
+.card-icons{
+  position:absolute;top:8px;right:8px;
+  display:flex;gap:8px;
+}
+.edit-kit, .delete-kit{
+  background:none;border:none;
+  color:var(--muted);
+  cursor:pointer;
+  font-size:13px;
+  line-height:1;
+}
+.edit-kit:hover{color:var(--blue);}
+.delete-kit:hover{color:var(--rust);}
+.match-term{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--muted);
+  margin:-4px 0 8px;
+}
+
+/* Modal */
+.overlay{
+  position:fixed;inset:0;background:rgba(27,42,65,.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:50;padding:20px;
+}
+.modal{
+  background:var(--paper-raised);
+  border:2px solid var(--ink);
+  width:100%;max-width:400px;
+  padding:20px;
+}
+.modal h2{
+  font-family:'JetBrains Mono',monospace;
+  font-size:16px;margin:0 0 14px;
+  border-bottom:2px solid var(--ink);
+  padding-bottom:8px;
+}
+.field{margin-bottom:12px;}
+.field label{
+  display:block;font-size:11px;font-family:'JetBrains Mono',monospace;
+  color:var(--ink-soft);margin-bottom:4px;letter-spacing:.03em;
+}
+.field input, .field select, .field textarea{
+  width:100%;padding:8px 9px;border:1.5px solid var(--line);
+  font-family:'Inter',sans-serif;font-size:13px;background:var(--paper);
+}
+.field textarea{resize:vertical;min-height:50px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+.row2{display:flex;gap:10px;}
+.row2 .field{flex:1;}
+
+.status-line{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--muted);
+  margin:-12px 0 16px;
+}
+.status-line a{color:var(--blue);cursor:pointer;text-decoration:underline;}
+.btn.secondary:disabled{opacity:.5;cursor:default;}
+.btn[data-loading="1"]{opacity:.6;cursor:wait;}
+
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:var(--paper);
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:9px 16px;z-index:60;opacity:0;transition:opacity .25s;
+  pointer-events:none;
+}
+.toast.show{opacity:1;}
+
+.ship-toggle{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--ink-soft);
+  display:flex;align-items:center;gap:5px;
+  cursor:pointer;
+  user-select:none;
+}
+.ship-toggle input{accent-color:var(--rust);cursor:pointer;}
+.price-breakdown{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--ink-soft);
+  margin:-4px 0 8px;
+}
+.step .ship-note{color:var(--muted);}
+
+.mode-tabs{
+  display:flex;gap:0;
+  margin-bottom:16px;
+  border-bottom:2px solid var(--ink);
+}
+.mode-tab{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.04em;
+  background:transparent;
+  border:none;
+  padding:9px 4px;
+  margin-right:22px;
+  color:var(--muted);
+  cursor:pointer;
+  border-bottom:3px solid transparent;
+  position:relative;top:2px;
+}
+.mode-tab.active{color:var(--ink);border-bottom-color:var(--rust);}
+
+.browse-list{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1.5px solid var(--ink);}
+.browse-row{
+  background:var(--paper-raised);
+  padding:12px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.browse-main{flex:1;min-width:220px;}
+.browse-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.browse-meta{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--ink-soft);
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+}
+.browse-price{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:800;
+  font-size:16px;
+  color:var(--green);
+  white-space:nowrap;
+}
+.browse-actions{display:flex;gap:8px;align-items:center;}
+.browse-actions a{
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--blue);
+}
+
+@media(max-width:480px){
+  .header{flex-direction:column;align-items:flex-start;}
+  .header .sub{text-align:left;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <div class="eyebrow">No. 0001 — Field Reference</div>
+      <h1>PARTS CATALOG</h1>
+    </div>
+    <div class="sub">Browse every scraped Gundam &amp; Zoid listing, or track specific kits with price history. Lowest confirmed price surfaces automatically.</div>
+  </div>
+
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" data-mode="mykits">MY KITS</button>
+    <button class="mode-tab" data-mode="browse">BROWSE ALL</button>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-filter="all">ALL</button>
+      <button class="tab" data-filter="gundam">GUNDAM</button>
+      <button class="tab" data-filter="zoid">ZOID</button>
+      <button class="tab" data-filter="other" id="otherTab">OTHER</button>
+    </div>
+    <input type="search" id="search" placeholder="Search…">
+    <select id="sort">
+      <option value="lowest">Sort: lowest price</option>
+      <option value="name">Sort: name A–Z</option>
+      <option value="recent" id="recentOption">Sort: recently updated</option>
+    </select>
+    <label class="ship-toggle">
+      <input type="checkbox" id="shipToggle"> Include shipping
+    </label>
+    <div class="spacer"></div>
+    <button class="btn secondary" id="refreshBtn">↻ REFRESH PRICES</button>
+    <button class="btn secondary" id="settingsBtn" title="Data source settings">⚙</button>
+    <button class="btn" id="addKitBtn">+ ADD KIT</button>
+  </div>
+  <div class="status-line" id="statusLine"></div>
+
+  <div id="content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let catalog = [];
+let browseResults = [];
+let settings = { dataSourceUrl: '', lastRefreshedAt: null, includeShipping: false };
+let mode = 'mykits';
+let filter = 'all';
+let sortMode = 'lowest';
+let searchBox = '';
+let loaded = false;
+
+const content = document.getElementById('content');
+const toastEl = document.getElementById('toast');
+const statusLine = document.getElementById('statusLine');
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 1800);
+}
+
+function uid(){
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+}
+
+// Storage keys in localStorage — this is a standalone file, so data lives
+// in your browser only (per-browser, per-device, not synced anywhere).
+const LS_CATALOG = 'gundamZoidTracker.catalog';
+const LS_SETTINGS = 'gundamZoidTracker.settings';
+const LS_BROWSE = 'gundamZoidTracker.browseResults';
+
+async function loadCatalog(){
+  content.innerHTML = '<div class="empty">Loading catalog…</div>';
+  try{
+    const raw = localStorage.getItem(LS_CATALOG);
+    catalog = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    catalog = [];
+  }
+  try{
+    const raw = localStorage.getItem(LS_SETTINGS);
+    if(raw) settings = Object.assign(settings, JSON.parse(raw));
+  }catch(e){ /* no settings saved yet */ }
+  try{
+    const raw = localStorage.getItem(LS_BROWSE);
+    browseResults = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    browseResults = [];
+  }
+  document.getElementById('shipToggle').checked = !!settings.includeShipping;
+  syncToolbarForMode();
+  loaded = true;
+  renderStatusLine();
+  render();
+
+  // Auto-refresh on open: pull whatever the scraper last produced, without
+  // waiting for a button press. Runs after the catalog is already showing
+  // so the app isn't blocked on a network call before you see anything.
+  if(settings.dataSourceUrl){
+    refreshPrices({ silent: true });
+  }
+}
+
+async function saveCatalog(){
+  try{
+    localStorage.setItem(LS_CATALOG, JSON.stringify(catalog));
+  }catch(e){
+    toast('Save failed — your browser storage may be full or blocked');
+  }
+}
+
+async function saveSettings(){
+  try{
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+  }catch(e){
+    toast('Settings save failed — your browser storage may be full or blocked');
+  }
+}
+
+function renderStatusLine(){
+  if(settings.dataSourceUrl){
+    const when = settings.lastRefreshedAt ? new Date(settings.lastRefreshedAt).toLocaleString() : 'never';
+    statusLine.innerHTML = `Data source connected · auto-refreshes on open · last refreshed: ${when}`;
+  } else {
+    statusLine.innerHTML = `No data source set — <a id="statusSetLink">connect one</a> to enable Refresh Prices.`;
+    const link = document.getElementById('statusSetLink');
+    if(link) link.onclick = openSettingsModal;
+  }
+}
+
+function effectivePrice(p){
+  return settings.includeShipping ? p.price + (p.shipping || 0) : p.price;
+}
+
+function lowestEntry(item){
+  if(!item.prices || item.prices.length===0) return null;
+  return item.prices.reduce((a,b)=> (effectivePrice(b) < effectivePrice(a) ? b : a));
+}
+
+function mostRecentTimestamp(item){
+  let t = item.createdAt || 0;
+  (item.prices||[]).forEach(p=>{ if(p.addedAt > t) t = p.addedAt; });
+  return t;
+}
+
+function render(){
+  if(!loaded) return;
+  if(mode === 'browse'){
+    renderBrowseAll();
+  } else {
+    renderMyKits();
+  }
+}
+
+function renderMyKits(){
+  let items = catalog.filter(i => filter==='all' || i.category===filter);
+  if(searchBox.trim()){
+    const s = searchBox.trim().toLowerCase();
+    items = items.filter(i => i.name.toLowerCase().includes(s));
+  }
+  items = items.slice().sort((a,b)=>{
+    if(sortMode==='name') return a.name.localeCompare(b.name);
+    if(sortMode==='recent') return mostRecentTimestamp(b) - mostRecentTimestamp(a);
+    // lowest price, no-price items last
+    const la = lowestEntry(a), lb = lowestEntry(b);
+    if(!la && !lb) return a.name.localeCompare(b.name);
+    if(!la) return 1;
+    if(!lb) return -1;
+    return effectivePrice(la) - effectivePrice(lb);
+  });
+
+  if(items.length===0){
+    content.innerHTML = `<div class="empty"><b>No kits here yet</b>${catalog.length===0 ? 'Add your first kit to start tracking prices, or find one in Browse All and hit Track.' : 'Nothing matches this filter or search.'}</div>`;
+    return;
+  }
+
+  content.innerHTML = `<div class="grid">${items.map(cardHtml).join('')}</div>`;
+
+  items.forEach(item=>{
+    const del = content.querySelector(`.delete-kit[data-id="${item.id}"]`);
+    if(del) del.onclick = ()=> deleteKit(item.id);
+    const editBtn = content.querySelector(`.edit-kit[data-id="${item.id}"]`);
+    if(editBtn) editBtn.onclick = ()=> openKitModal(item.id);
+    const addPriceBtn = content.querySelector(`.add-price[data-id="${item.id}"]`);
+    if(addPriceBtn) addPriceBtn.onclick = ()=> openPriceModal(item.id);
+    const histToggle = content.querySelector(`.history-toggle[data-id="${item.id}"]`);
+    if(histToggle) histToggle.onclick = ()=> toggleHistory(item.id);
+    (item.prices||[]).forEach(p=>{
+      const delBtn = content.querySelector(`.del[data-id="${p.id}"]:not(.set-ship)`);
+      if(delBtn) delBtn.onclick = ()=> deletePrice(item.id, p.id);
+      const shipBtn = content.querySelector(`.set-ship[data-id="${p.id}"]`);
+      if(shipBtn) shipBtn.onclick = ()=> setShipping(item.id, p.id);
+    });
+  });
+}
+
+function browseEffectivePrice(r){
+  return settings.includeShipping ? r.price + (r.shipping || 0) : r.price;
+}
+
+function renderBrowseAll(){
+  if(!settings.dataSourceUrl){
+    content.innerHTML = `<div class="empty"><b>No data source connected</b>Set one in ⚙ settings to browse everything the scraper's found.</div>`;
+    return;
+  }
+  let items = browseResults.filter(r => typeof r.price === 'number');
+  items = items.filter(r => filter==='all' || r.category===filter);
+  if(searchBox.trim()){
+    const s = searchBox.trim().toLowerCase();
+    items = items.filter(r => (r.title||'').toLowerCase().includes(s));
+  }
+  items = items.slice().sort((a,b)=>{
+    if(sortMode==='name') return (a.title||'').localeCompare(b.title||'');
+    return browseEffectivePrice(a) - browseEffectivePrice(b);
+  });
+
+  if(items.length===0){
+    content.innerHTML = `<div class="empty"><b>Nothing here yet</b>${browseResults.length===0 ? 'Hit Refresh Prices, or wait for the next auto-refresh.' : 'Nothing matches this filter or search.'}</div>`;
+    return;
+  }
+
+  content.innerHTML = `<div class="browse-list">${items.map(browseRowHtml).join('')}</div>`;
+
+  items.forEach((r, idx)=>{
+    const btn = content.querySelector(`.track-btn[data-idx="${idx}"]`);
+    if(btn) btn.onclick = ()=> trackListing(r);
+  });
+}
+
+function browseRowHtml(r, idx){
+  return `
+  <div class="browse-row">
+    <div class="browse-main">
+      <div class="browse-title">${escapeHtml(r.title||'Untitled listing')}</div>
+      <div class="browse-meta">
+        <span class="badge ${r.category||'other'}">${r.category||'other'}</span>
+        <span>${escapeHtml(r.site||'')}</span>
+        ${r.condition ? `<span>· ${escapeHtml(r.condition)}</span>` : ''}
+        ${r.url ? `<a href="${escapeAttr(r.url)}" target="_blank" rel="noopener">view ↗</a>` : ''}
+      </div>
+    </div>
+    <div class="browse-actions">
+      <div class="browse-price">$${browseEffectivePrice(r).toFixed(2)}</div>
+      <button class="btn small track-btn" data-idx="${idx}">+ TRACK</button>
+    </div>
+  </div>`;
+}
+
+async function trackListing(r){
+  const kit = {
+    id: uid(),
+    partNo: String(catalog.length+1).padStart(4,'0'),
+    name: r.title || 'Untitled kit',
+    category: r.category || 'other',
+    grade: '',
+    matchTerm: '',
+    notes: '',
+    createdAt: Date.now(),
+    prices: [{
+      id: uid(),
+      price: r.price,
+      shipping: (typeof r.shipping === 'number') ? r.shipping : null,
+      seller: r.site || '',
+      condition: r.condition || '',
+      url: r.url || '',
+      addedAt: Date.now()
+    }]
+  };
+  catalog.push(kit);
+  await saveCatalog();
+  mode = 'mykits';
+  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.toggle('active', t.dataset.mode==='mykits'));
+  syncToolbarForMode();
+  render();
+  toast(`Added "${kit.name}" to My Kits`);
+}
+
+let openHistoryIds = new Set();
+function toggleHistory(id){
+  if(openHistoryIds.has(id)) openHistoryIds.delete(id); else openHistoryIds.add(id);
+  render();
+}
+
+function fmtDate(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'2-digit'});
+}
+
+function cardHtml(item){
+  const low = lowestEntry(item);
+  const sorted = (item.prices||[]).slice().sort((a,b)=>effectivePrice(a)-effectivePrice(b));
+  const historyOpen = openHistoryIds.has(item.id);
+  return `
+  <div class="card">
+    <div class="card-icons">
+      <button class="edit-kit" data-id="${item.id}" title="Edit kit">✎</button>
+      <button class="delete-kit" data-id="${item.id}" title="Delete kit">✕</button>
+    </div>
+    <div class="card-top">
+      <div>
+        <div class="partno">NO. ${item.partNo}</div>
+        <div class="kit-name">${escapeHtml(item.name)}</div>
+        ${item.grade ? `<div class="kit-grade">${escapeHtml(item.grade)}</div>` : ''}
+      </div>
+      <span class="badge ${item.category}">${item.category}</span>
+    </div>
+    ${item.notes ? `<div class="kit-notes">${escapeHtml(item.notes)}</div>` : ''}
+    ${item.matchTerm ? `<div class="match-term">match term: "${escapeHtml(item.matchTerm)}"</div>` : ''}
+    ${low
+      ? `<div class="price-row"><span class="lowest-price">$${effectivePrice(low).toFixed(2)}</span><span class="lowest-tag">LOWEST</span></div>
+         ${settings.includeShipping && low.shipping ? `<div class="price-breakdown">$${low.price.toFixed(2)} + $${low.shipping.toFixed(2)} shipping</div>` : ''}
+         <div class="lowest-seller">${escapeHtml(low.seller)}${low.condition ? ' · '+escapeHtml(low.condition) : ''}${low.url ? ` — <a href="${escapeAttr(low.url)}" target="_blank" rel="noopener">view listing ↗</a>` : ''}</div>`
+      : `<div class="no-price">No prices logged yet</div>`
+    }
+    <div class="card-actions">
+      <button class="btn small add-price" data-id="${item.id}">+ ADD PRICE</button>
+      ${sorted.length>0 ? `<button class="btn small secondary history-toggle" data-id="${item.id}">${historyOpen?'HIDE':'SHOW'} HISTORY (${sorted.length})</button>` : ''}
+    </div>
+    ${historyOpen ? `
+    <div class="steps">
+      ${sorted.map((p,idx)=>`
+        <div class="step ${idx===0?'lowest':''}">
+          <span><span class="price">$${effectivePrice(p).toFixed(2)}</span>${settings.includeShipping && p.shipping ? `<span class="ship-note"> ($${p.price.toFixed(2)}+$${p.shipping.toFixed(2)} ship)</span>` : ''} — ${escapeHtml(p.seller)} <span class="meta">· ${fmtDate(p.addedAt)}${p.condition ? ' · '+escapeHtml(p.condition):''}</span></span>
+          <span>
+            ${settings.includeShipping && !p.shipping ? `<button class="del set-ship" data-id="${p.id}">+ship</button>` : ''}
+            <button class="del" data-id="${p.id}">remove</button>
+          </span>
+        </div>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+async function deleteKit(id){
+  if(!confirm('Delete this kit and all its price history?')) return;
+  catalog = catalog.filter(i=>i.id!==id);
+  render();
+  await saveCatalog();
+  toast('Kit removed');
+}
+
+async function setShipping(itemId, priceId){
+  const item = catalog.find(i=>i.id===itemId);
+  if(!item) return;
+  const p = (item.prices||[]).find(p=>p.id===priceId);
+  if(!p) return;
+  const input = prompt(`Shipping cost for this ${escapeHtml(p.seller)} listing:`, '0.00');
+  if(input === null) return;
+  const val = parseFloat(input);
+  if(isNaN(val) || val < 0){ toast('Enter a valid shipping cost'); return; }
+  p.shipping = val;
+  render();
+  await saveCatalog();
+}
+
+async function deletePrice(itemId, priceId){
+  const item = catalog.find(i=>i.id===itemId);
+  if(!item) return;
+  item.prices = item.prices.filter(p=>p.id!==priceId);
+  render();
+  await saveCatalog();
+}
+
+// Mode tabs (My Kits vs Browse All)
+document.getElementById('modeTabs').addEventListener('click', e=>{
+  const btn = e.target.closest('.mode-tab');
+  if(!btn) return;
+  mode = btn.dataset.mode;
+  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.toggle('active', t===btn));
+  syncToolbarForMode();
+  render();
+});
+
+function syncToolbarForMode(){
+  const addKitBtn = document.getElementById('addKitBtn');
+  const otherTab = document.getElementById('otherTab');
+  const recentOption = document.getElementById('recentOption');
+  const searchInput = document.getElementById('search');
+  if(mode === 'browse'){
+    addKitBtn.style.display = 'none';
+    otherTab.style.display = 'none';
+    recentOption.style.display = 'none';
+    if(sortMode === 'recent'){ sortMode = 'lowest'; document.getElementById('sort').value = 'lowest'; }
+    searchInput.placeholder = 'Search all listings…';
+    if(filter === 'other'){ filter = 'all'; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.filter==='all')); }
+  } else {
+    addKitBtn.style.display = '';
+    otherTab.style.display = '';
+    recentOption.style.display = '';
+    searchInput.placeholder = 'Search kits…';
+  }
+}
+
+// Tabs
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('.tab');
+  if(!btn) return;
+  filter = btn.dataset.filter;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t===btn));
+  render();
+});
+
+document.getElementById('search').addEventListener('input', e=>{
+  searchBox = e.target.value;
+  render();
+});
+document.getElementById('sort').addEventListener('change', e=>{
+  sortMode = e.target.value;
+  render();
+});
+document.getElementById('shipToggle').addEventListener('change', async e=>{
+  settings.includeShipping = e.target.checked;
+  render();
+  await saveSettings();
+});
+
+// Add kit modal
+document.getElementById('addKitBtn').addEventListener('click', ()=> openKitModal());
+
+function openKitModal(editId){
+  const existing = editId ? catalog.find(i=>i.id===editId) : null;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>${existing ? 'EDIT KIT ENTRY' : 'NEW KIT ENTRY'}</h2>
+      <div class="field"><label>Name</label><input type="text" id="f-name" placeholder="RX-78-2 Gundam" value="${existing ? escapeAttr(existing.name) : ''}"></div>
+      <div class="row2">
+        <div class="field"><label>Category</label>
+          <select id="f-cat">
+            <option value="gundam" ${existing && existing.category==='gundam' ? 'selected':''}>Gundam</option>
+            <option value="zoid" ${existing && existing.category==='zoid' ? 'selected':''}>Zoid</option>
+            <option value="other" ${existing && existing.category==='other' ? 'selected':''}>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Grade / Scale</label><input type="text" id="f-grade" placeholder="MG 1/100" value="${existing ? escapeAttr(existing.grade||'') : ''}"></div>
+      </div>
+      <div class="field"><label>Match term (for Refresh Prices)</label>
+        <input type="text" id="f-match" placeholder="Leave blank to use the name above" value="${existing ? escapeAttr(existing.matchTerm||'') : ''}">
+        <div class="kit-notes" style="margin-top:4px;">Matches any scraped listing whose title contains this text.</div>
+      </div>
+      <div class="field"><label>Notes (optional)</label><textarea id="f-notes" placeholder="Reissue, box condition, etc.">${existing ? escapeHtml(existing.notes||'') : ''}</textarea></div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="cancelKit">Cancel</button>
+        <button class="btn" id="saveKit">${existing ? 'Save Changes' : 'Save Kit'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.getElementById('cancelKit').onclick = ()=> overlay.remove();
+  document.getElementById('f-name').focus();
+  document.getElementById('saveKit').onclick = async ()=>{
+    const name = document.getElementById('f-name').value.trim();
+    if(!name){ toast('Give the kit a name'); return; }
+    const matchTerm = document.getElementById('f-match').value.trim();
+    if(existing){
+      existing.name = name;
+      existing.category = document.getElementById('f-cat').value;
+      existing.grade = document.getElementById('f-grade').value.trim();
+      existing.matchTerm = matchTerm;
+      existing.notes = document.getElementById('f-notes').value.trim();
+    } else {
+      catalog.push({
+        id: uid(),
+        partNo: String(catalog.length+1).padStart(4,'0'),
+        name,
+        category: document.getElementById('f-cat').value,
+        grade: document.getElementById('f-grade').value.trim(),
+        matchTerm,
+        notes: document.getElementById('f-notes').value.trim(),
+        createdAt: Date.now(),
+        prices: []
+      });
+    }
+    overlay.remove();
+    render();
+    await saveCatalog();
+    toast(existing ? 'Kit updated' : 'Kit added');
+  };
+}
+
+function openPriceModal(itemId){
+  const item = catalog.find(i=>i.id===itemId);
+  if(!item) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>LOG PRICE — ${escapeHtml(item.name)}</h2>
+      <div class="row2">
+        <div class="field"><label>Price (USD)</label><input type="text" inputmode="decimal" id="p-price" placeholder="54.99"></div>
+        <div class="field"><label>Shipping (optional)</label><input type="text" inputmode="decimal" id="p-shipping" placeholder="0.00"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Condition</label>
+          <select id="p-cond"><option value="">—</option><option>New</option><option>Used</option><option>Sealed</option><option>Open box</option></select>
+        </div>
+        <div class="field"><label>Seller / Site</label><input type="text" id="p-seller" placeholder="Amazon, HLJ, eBay…"></div>
+      </div>
+      <div class="field"><label>Listing URL (optional)</label><input type="text" id="p-url" placeholder="https://…"></div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="cancelPrice">Cancel</button>
+        <button class="btn" id="savePrice">Save Price</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.getElementById('cancelPrice').onclick = ()=> overlay.remove();
+  document.getElementById('p-price').focus();
+  document.getElementById('savePrice').onclick = async ()=>{
+    const priceVal = parseFloat(document.getElementById('p-price').value);
+    const shipRaw = document.getElementById('p-shipping').value.trim();
+    const shippingVal = shipRaw === '' ? null : parseFloat(shipRaw);
+    const seller = document.getElementById('p-seller').value.trim();
+    if(isNaN(priceVal) || priceVal <= 0){ toast('Enter a valid price'); return; }
+    if(shipRaw !== '' && (isNaN(shippingVal) || shippingVal < 0)){ toast('Enter a valid shipping cost, or leave it blank'); return; }
+    if(!seller){ toast('Enter a seller name'); return; }
+    let url = document.getElementById('p-url').value.trim();
+    if(url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+    item.prices.push({
+      id: uid(),
+      price: priceVal,
+      shipping: shippingVal,
+      seller,
+      condition: document.getElementById('p-cond').value,
+      url,
+      addedAt: Date.now()
+    });
+    openHistoryIds.add(item.id);
+    overlay.remove();
+    render();
+    await saveCatalog();
+    toast('Price logged');
+  };
+}
+
+// Settings modal (data source URL for Refresh Prices)
+document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
+
+function openSettingsModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>DATA SOURCE</h2>
+      <div class="field">
+        <label>Scraper output URL (latest_full.json)</label>
+        <input type="text" id="s-url" placeholder="https://raw.githubusercontent.com/you/repo/main/output/latest_full.json" value="${escapeAttr(settings.dataSourceUrl||'')}">
+      </div>
+      <div class="kit-notes" style="margin-bottom:10px;">
+        Point this at the raw JSON your scraper writes each run (e.g. the raw GitHub URL to
+        output/latest_full.json). Browse All shows everything from it directly; My Kits pulls in
+        anything whose title contains a kit's match term. The URL needs to be publicly reachable
+        and allow cross-origin requests — a public GitHub repo's raw.githubusercontent.com link works.
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="cancelSettings">Cancel</button>
+        <button class="btn" id="saveSettings">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.getElementById('cancelSettings').onclick = ()=> overlay.remove();
+  document.getElementById('s-url').focus();
+  document.getElementById('saveSettings').onclick = async ()=>{
+    settings.dataSourceUrl = document.getElementById('s-url').value.trim();
+    overlay.remove();
+    renderStatusLine();
+    await saveSettings();
+    toast('Data source saved');
+  };
+}
+
+// Refresh Prices — fetches the configured URL, stores the full result set
+// for Browse All, and adds any new listing whose title contains a My Kits
+// item's match term (or name, if no match term is set) as a new price
+// entry for that kit. Runs both on manual button press and automatically
+// whenever the app opens.
+document.getElementById('refreshBtn').addEventListener('click', ()=> refreshPrices());
+
+async function refreshPrices(opts){
+  opts = opts || {};
+  if(!settings.dataSourceUrl){
+    if(!opts.silent){
+      toast('Set a data source URL first (⚙)');
+      openSettingsModal();
+    }
+    return;
+  }
+  const btn = document.getElementById('refreshBtn');
+  btn.dataset.loading = '1';
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'REFRESHING…';
+  try{
+    const resp = await fetch(settings.dataSourceUrl, { cache: 'no-store' });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const results = Array.isArray(data) ? data : (data.results || []);
+    if(!Array.isArray(results) || results.length===0){
+      if(!opts.silent) toast('Data source returned no results');
+      return;
+    }
+
+    // Browse All always reflects the full catalog from the last fetch.
+    browseResults = results;
+    try{ localStorage.setItem(LS_BROWSE, JSON.stringify(browseResults)); }catch(e){ /* ignore quota errors */ }
+
+    // My Kits: pull in anything whose title contains a kit's match term.
+    let added = 0;
+    catalog.forEach(item=>{
+      const term = (item.matchTerm || item.name || '').trim().toLowerCase();
+      if(!term) return;
+      const matches = results.filter(r => (r.title||'').toLowerCase().includes(term));
+      matches.forEach(r=>{
+        if(typeof r.price !== 'number' || !r.site) return;
+        const dup = (item.prices||[]).some(p =>
+          p.seller === r.site &&
+          Math.abs(p.price - r.price) < 0.005 &&
+          (p.url||'') === (r.url||'')
+        );
+        if(dup) return;
+        item.prices = item.prices || [];
+        item.prices.push({
+          id: uid(),
+          price: r.price,
+          shipping: (typeof r.shipping === 'number') ? r.shipping : null,
+          seller: r.site,
+          condition: r.condition || '',
+          url: r.url || '',
+          addedAt: Date.now()
+        });
+        added++;
+      });
+    });
+
+    settings.lastRefreshedAt = Date.now();
+    await saveSettings();
+    renderStatusLine();
+
+    if(added > 0){
+      await saveCatalog();
+    }
+    render();
+    if(added > 0){
+      toast(`Refreshed — ${added} new price${added===1?'':'s'} added, ${browseResults.length} listings total`);
+    } else if(!opts.silent){
+      toast(`Refreshed — ${browseResults.length} listings found`);
+    }
+  }catch(e){
+    if(!opts.silent) toast('Refresh failed — check the data source URL');
+  }finally{
+    btn.dataset.loading = '';
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+loadCatalog();
+</script>
+</body>
+</html>

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Gundam & Zoid price scraper.
+Gundam & Zoid price scraper — full-catalog mode.
 
-Checks a list of search terms across several retailers and writes results to:
+Instead of searching for specific kit names, this browses each site's
+whole Gundam catalog and whole Zoids catalog (paginating through search
+results) so you get pricing on everything a site carries, not just kits
+you've named ahead of time. Writes:
+
   - output/prices_YYYY-MM-DD.csv   every listing found today
-  - output/latest.json             cheapest listing per search term
+  - output/latest.json             cheapest listing per category (gundam/zoid)
   - output/latest_full.json        every listing found today, flat list —
                                     this is the file the tracker app's
                                     "Refresh Prices" button reads
@@ -17,22 +21,27 @@ IMPORTANT — READ BEFORE SCHEDULING THIS TO RUN DAILY:
     (`python scraper.py`), check output/prices_*.csv, and fix any selector
     that comes back with 0 results by inspecting the real page (right-click
     a product tile -> Inspect) before you schedule this to run unattended.
+  - Pagination is guessed too (a `?page=N`-style parameter appended to the
+    search URL). Some sites use a different scheme (offset-based, "load
+    more" via JavaScript, etc.) and will just return the same first page
+    repeatedly, or nothing, past page 1 — verify this per site the same
+    way as selectors.
+  - Browsing an entire catalog is a much bigger crawl than searching one
+    term at a time — more requests per site, per run. `max_pages_per_site`
+    in config.json caps this; keep it conservative and raise it gradually
+    rather than starting at a large number.
   - Every site here has its own Terms of Service, and several restrict
-    automated access in some form. This script is written to be a polite,
-    low-volume client (a few seconds between requests, one run a day) but
-    that doesn't make it compliant with any given site's specific terms —
-    that's worth checking yourself. Where a legitimate API exists (eBay)
-    this script uses that instead of scraping HTML.
+    automated access in some form — this applies more, not less, once
+    you're crawling a whole catalog instead of a single search. Where a
+    legitimate API exists (eBay) this script uses that instead of
+    scraping HTML.
   - HLJ.com and HobbyLinkJapan.com may be the same store under two domains
-    — worth checking before you count both toward the same "cheapest"
-    comparison.
-  - Amazon is intentionally left unimplemented. Its anti-bot systems are
-    aggressive and scraping it violates its Conditions of Use. Use the
-    Amazon Product Advertising API (requires an Associates account) if you
-    need Amazon prices.
-  - Mercari's site is heavily JavaScript-rendered, so plain requests +
-    BeautifulSoup won't see search results. It's disabled by default; see
-    the README for a Playwright-based approach if you want it added.
+    — worth checking before you count both toward the same comparison.
+  - Amazon is intentionally left unimplemented (aggressive anti-bot,
+    Conditions of Use restrict scraping — use the Product Advertising API
+    instead if you need Amazon prices). Mercari is disabled by default —
+    its search results are JS-rendered and invisible to requests +
+    BeautifulSoup; see the README for a Playwright-based option.
 """
 
 import csv
@@ -71,14 +80,16 @@ DEFAULT_SHOPIFY_SELECTORS = {
     "title_selector": ".card__heading a, .product-card__title, .product-item-meta__title, a.full-unstyled-link",
     "price_selector": ".price-item--regular, .price__current, .price, .money",
     "link_selector": "a[href]",
+    "page_param": "page",
 }
 
 # ---------------------------------------------------------------------------
 # Site definitions for the generic HTML scraper. Each entry needs:
 #   name, search_url (with a {q} placeholder), base_url, currency
 # and can override any of item_selector / title_selector / price_selector /
-# link_selector — otherwise the Shopify-style defaults above are used.
-# ALL selectors here are unverified guesses — see the module docstring.
+# link_selector / page_param — otherwise the Shopify-style defaults above
+# are used. ALL selectors and pagination params here are unverified
+# guesses — see the module docstring.
 # ---------------------------------------------------------------------------
 SITE_DEFS = {
     "hobbylinkjapan": {
@@ -98,6 +109,7 @@ SITE_DEFS = {
         "item_selector": ".product-item, .search-result-item, .item-cell",
         "title_selector": ".product-title, .item-title, a[title]",
         "price_selector": ".product-price, .item-price, .price",
+        "page_param": "Page",
     },
     "mandarake": {
         "name": "Mandarake",
@@ -116,6 +128,7 @@ SITE_DEFS = {
         "item_selector": ".product-item, li.item",
         "title_selector": ".product-item-link, .product-name a",
         "price_selector": ".price",
+        "page_param": "p",
     },
     "gundamplanet": {
         "name": "Gundam Planet",
@@ -131,6 +144,7 @@ SITE_DEFS = {
         "item_selector": ".product-item, li.item",
         "title_selector": ".product-item-link, .product-name a",
         "price_selector": ".price",
+        "page_param": "p",
     },
     "gundamplacestore": {
         "name": "Gundam Place Store",
@@ -196,7 +210,7 @@ def get_soup(url):
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "lxml")
     except requests.RequestException as e:
-        log.warning(f"  fetch failed for {url}: {e}")
+        log.warning(f"    fetch failed for {url}: {e}")
         return None
 
 
@@ -214,12 +228,16 @@ def parse_price(text):
         return None
 
 
-def scrape_generic(term, site_key, site_cfg=None):
+def scrape_generic_page(query, site_key, page):
+    """Fetch one page of a site's search results for `query`. Returns a list
+    of raw listings (no category attached yet)."""
     site = SITE_DEFS[site_key]
     sel = dict(DEFAULT_SHOPIFY_SELECTORS)
-    sel.update({k: v for k, v in site.items() if k.endswith("_selector")})
+    sel.update({k: v for k, v in site.items() if k.endswith("_selector") or k == "page_param"})
 
-    url = site["search_url"].format(q=quote_plus(term))
+    url = site["search_url"].format(q=quote_plus(query))
+    if page > 1:
+        url += f"&{sel['page_param']}={page}"
     soup = get_soup(url)
     if soup is None:
         return []
@@ -239,13 +257,9 @@ def scrape_generic(term, site_key, site_cfg=None):
             href = site["base_url"] + href
         results.append({
             "site": site["name"],
-            "search_term": term,
             "title": title_el.get_text(strip=True),
             "price": price,
-            # Shipping cost almost never appears on a search-results page —
-            # it's usually shown at checkout or on the product page. Left
-            # null here; the tracker app lets a user fill it in by hand.
-            "shipping": None,
+            "shipping": None,  # search-results pages almost never show this
             "currency": site.get("currency", "USD"),
             "condition": "New",
             "url": href,
@@ -253,10 +267,34 @@ def scrape_generic(term, site_key, site_cfg=None):
     return results
 
 
+def scrape_generic_catalog(query, site_key, max_pages):
+    """Page through a site's search results for `query` until a page comes
+    back empty or max_pages is hit."""
+    all_results = []
+    seen_urls = set()
+    for page in range(1, max_pages + 1):
+        page_results = scrape_generic_page(query, site_key, page)
+        if not page_results:
+            break  # no more pages (or the selector never matched anything)
+        new_count = 0
+        for r in page_results:
+            key = r.get("url") or (r["site"], r["title"], r["price"])
+            if key in seen_urls:
+                continue
+            seen_urls.add(key)
+            all_results.append(r)
+            new_count += 1
+        if new_count == 0:
+            break  # pagination isn't advancing — same page repeating
+        if page < max_pages:
+            polite_sleep()
+    return all_results
+
+
 # ---------------------------------------------------------------------------
 # eBay — uses the official Browse API (needs a free developer app id/cert id
-# from developer.ebay.com). This is the one site scraped via API, not HTML,
-# because eBay explicitly offers this for exactly this use case.
+# from developer.ebay.com), paginated via offset until `max_results` is hit
+# or eBay reports no more items.
 # ---------------------------------------------------------------------------
 
 def get_ebay_token(app_id, cert_id):
@@ -278,30 +316,41 @@ def get_ebay_token(app_id, cert_id):
     return resp.json()["access_token"]
 
 
-def scrape_ebay(term, cfg):
+def scrape_ebay_catalog(query, cfg, max_results):
     if not cfg.get("app_id") or not cfg.get("cert_id"):
-        log.info("  [ebay] skipped — no app_id/cert_id in config.json")
+        log.info("    [ebay] skipped — no app_id/cert_id in config.json")
         return []
     try:
         token = get_ebay_token(cfg["app_id"], cfg["cert_id"])
-        resp = requests.get(
-            "https://api.ebay.com/buy/browse/v1/item_summary/search",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "X-EBAY-C-MARKETPLACE-ID": cfg.get("marketplace", "EBAY_US"),
-            },
-            params={"q": term, "limit": 20},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        items = resp.json().get("itemSummaries", [])
-        results = []
+    except requests.RequestException as e:
+        log.warning(f"    [ebay] auth failed: {e}")
+        return []
+
+    results = []
+    offset = 0
+    page_size = 50
+    while offset < max_results:
+        try:
+            resp = requests.get(
+                "https://api.ebay.com/buy/browse/v1/item_summary/search",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-EBAY-C-MARKETPLACE-ID": cfg.get("marketplace", "EBAY_US"),
+                },
+                params={"q": query, "limit": min(page_size, max_results - offset), "offset": offset},
+                timeout=15,
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            log.warning(f"    [ebay] request failed: {e}")
+            break
+
+        data = resp.json()
+        items = data.get("itemSummaries", [])
+        if not items:
+            break
         for it in items:
             price = it.get("price", {})
-            # Browse API exposes shipping cost when it's a fixed amount;
-            # "CALCULATED" or missing shippingCost means we can't know it
-            # without picking a buyer location, so we leave it null rather
-            # than guess.
             shipping = None
             for opt in it.get("shippingOptions", []):
                 cost = opt.get("shippingCost", {}).get("value")
@@ -310,7 +359,6 @@ def scrape_ebay(term, cfg):
                     break
             results.append({
                 "site": "eBay",
-                "search_term": term,
                 "title": it.get("title"),
                 "price": parse_price(price.get("value")),
                 "shipping": shipping,
@@ -318,34 +366,23 @@ def scrape_ebay(term, cfg):
                 "condition": it.get("condition"),
                 "url": it.get("itemWebUrl"),
             })
-        return results
-    except requests.RequestException as e:
-        log.warning(f"  [ebay] request failed: {e}")
-        return []
+
+        offset += len(items)
+        if offset >= data.get("total", 0):
+            break
+        polite_sleep()
+
+    return results
 
 
-# ---------------------------------------------------------------------------
-# Mercari — disabled by default (JS-rendered search results; requests +
-# BeautifulSoup can't see them). See README for a Playwright-based option.
-# ---------------------------------------------------------------------------
-
-def scrape_mercari(term, cfg):
-    log.info("  [mercari] skipped — needs a JS-capable client, see README")
+def scrape_mercari_catalog(query, cfg, max_pages):
+    log.info("    [mercari] skipped — needs a JS-capable client, see README")
     return []
 
 
-# ---------------------------------------------------------------------------
-# Amazon — intentionally not implemented. See module docstring.
-# ---------------------------------------------------------------------------
-
-def scrape_amazon(term, cfg):
-    log.info("  [amazon] skipped — not implemented, see README for why")
+def scrape_amazon_catalog(query, cfg, max_pages):
+    log.info("    [amazon] skipped — not implemented, see README for why")
     return []
-
-
-SCRAPERS = {"ebay": scrape_ebay, "mercari": scrape_mercari, "amazon": scrape_amazon}
-for _key in SITE_DEFS:
-    SCRAPERS[_key] = (lambda term, cfg, k=_key: scrape_generic(term, k, cfg))
 
 
 def load_config():
@@ -354,8 +391,6 @@ def load_config():
         sys.exit(1)
     with open(CONFIG_PATH) as f:
         cfg = json.load(f)
-    # Allow eBay credentials to come from environment variables (e.g. GitHub
-    # Actions secrets) instead of being committed to config.json.
     cfg.setdefault("ebay", {})
     if os.environ.get("EBAY_APP_ID"):
         cfg["ebay"]["app_id"] = os.environ["EBAY_APP_ID"]
@@ -367,21 +402,48 @@ def load_config():
 def run():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     cfg = load_config()
-    terms = cfg.get("search_terms", [])
-    if not terms:
-        log.error("config.json has no search_terms — add at least one kit name.")
+    categories = cfg.get("categories", {})
+    if not categories:
+        log.error('config.json has no "categories" — e.g. {"gundam": "gundam", "zoid": "zoids"}')
         sys.exit(1)
+    max_pages = cfg.get("max_pages_per_site", 3)
+    max_ebay_results = cfg.get("ebay", {}).get("max_results", 150)
 
     all_results = []
-    for term in terms:
-        log.info(f"Searching: {term}")
-        for site_key, fn in SCRAPERS.items():
+    for category, query in categories.items():
+        log.info(f"Category: {category}  (query: \"{query}\")")
+
+        ebay_cfg = cfg.get("ebay", {})
+        if ebay_cfg.get("enabled", False):
+            log.info("  -> ebay")
+            results = scrape_ebay_catalog(query, ebay_cfg, max_ebay_results)
+            log.info(f"     {len(results)} result(s)")
+            for r in results:
+                r["category"] = category
+                r["query"] = query
+            all_results.extend(results)
+            polite_sleep()
+
+        mercari_cfg = cfg.get("mercari", {})
+        if mercari_cfg.get("enabled", False):
+            log.info("  -> mercari")
+            scrape_mercari_catalog(query, mercari_cfg, max_pages)
+
+        amazon_cfg = cfg.get("amazon", {})
+        if amazon_cfg.get("enabled", False):
+            log.info("  -> amazon")
+            scrape_amazon_catalog(query, amazon_cfg, max_pages)
+
+        for site_key in SITE_DEFS:
             site_cfg = cfg.get(site_key, {})
             if not site_cfg.get("enabled", False):
                 continue
             log.info(f"  -> {site_key}")
-            results = fn(term, site_cfg)
-            log.info(f"     {len(results)} result(s)")
+            results = scrape_generic_catalog(query, site_key, max_pages)
+            log.info(f"     {len(results)} result(s) across up to {max_pages} page(s)")
+            for r in results:
+                r["category"] = category
+                r["query"] = query
             all_results.extend(results)
             polite_sleep()
 
@@ -391,37 +453,34 @@ def run():
     csv_path = os.path.join(OUTPUT_DIR, f"prices_{date_str}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["search_term", "site", "title", "price", "currency", "condition", "url"]
+            f, fieldnames=["category", "site", "title", "price", "shipping", "currency", "condition", "url"]
         )
         writer.writeheader()
         for r in all_results:
             writer.writerow({k: r.get(k, "") for k in writer.fieldnames})
     log.info(f"Wrote {len(all_results)} rows to {csv_path}")
 
-    # Full flat list — this is what the tracker app's "Refresh Prices"
-    # button fetches and matches against each kit's match term.
     full_path = os.path.join(OUTPUT_DIR, "latest_full.json")
     with open(full_path, "w", encoding="utf-8") as f:
         json.dump({"generated_at": generated_at, "results": all_results}, f, indent=2)
     log.info(f"Wrote {full_path}")
 
-    # Rolling summary: cheapest listing per search term, for quick reading.
     cheapest = {}
     for r in all_results:
         if r.get("price") is None:
             continue
-        term = r["search_term"]
-        if term not in cheapest or r["price"] < cheapest[term]["price"]:
-            cheapest[term] = r
+        cat = r["category"]
+        if cat not in cheapest or r["price"] < cheapest[cat]["price"]:
+            cheapest[cat] = r
     summary_path = os.path.join(OUTPUT_DIR, "latest.json")
     with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump({"generated_at": generated_at, "cheapest_by_term": cheapest}, f, indent=2)
+        json.dump({"generated_at": generated_at, "cheapest_by_category": cheapest}, f, indent=2)
     log.info(f"Wrote summary to {summary_path}")
 
+    log.info(f"Total listings this run: {len(all_results)}")
     if cheapest:
-        log.info("Cheapest found this run:")
-        for term, r in cheapest.items():
-            log.info(f"  {term}: {r['price']} {r.get('currency','')} at {r['site']} — {r.get('url','')}")
+        for cat, r in cheapest.items():
+            log.info(f"  cheapest {cat}: {r['price']} {r.get('currency','')} at {r['site']} — {r.get('title','')}")
     else:
         log.warning(
             "No prices found at all. Most likely a selector is stale — "

@@ -1,11 +1,18 @@
 # Gundam & Zoid price scraper
 
-Checks your search terms against several retailers once per run and writes:
+Browses each site's whole Gundam catalog and whole Zoids catalog — not
+just kits you've named ahead of time — by paging through broad search
+results, and writes:
 
 - `output/prices_YYYY-MM-DD.csv` — every listing found that day
-- `output/latest.json` — the cheapest listing per search term
+- `output/latest.json` — the cheapest listing per category (gundam/zoid)
 - `output/latest_full.json` — every listing found that day, as a flat list —
   **this is the file the tracker app's "Refresh Prices" button reads**
+
+This is a much bigger crawl than searching one kit name at a time — every
+site gets paged through (`max_pages_per_site` pages deep) for both
+categories, every run. Start with a small page count and raise it once
+you've confirmed a site's pagination actually works (see below).
 
 ## Sites covered
 
@@ -64,6 +71,18 @@ update the matching `.select(...)` line in `scraper.py` to match the real
 class names. This is the normal maintenance loop for any scraper — sites
 redesign their pages every so often and selectors need the occasional fix.
 
+### Pagination is also a guess
+
+Each site in `SITE_DEFS` has a `page_param` (e.g. `page`, `p`) appended to
+the search URL as `&page=2`, `&page=3`, etc. Some sites use a different
+scheme entirely (an offset number, a "load more" button driven by
+JavaScript with no real page-N URL at all) — for those, every "page" will
+just return the same first-page results, and `scrape_generic_catalog`
+will stop after the first page once it notices nothing new is coming in.
+That's a safe failure mode (you don't get duplicates), but it does mean
+you're only getting page 1 of that site's catalog until the pagination
+scheme is fixed to match reality.
+
 ### Why Amazon isn't implemented
 
 Amazon's anti-bot systems are aggressive and its Conditions of Use restrict
@@ -89,10 +108,17 @@ cp config.example.json config.json
 ```
 
 Edit `config.json`:
-- `search_terms`: the kit names you're tracking, one string per kit. Be as
-  specific as you want ("MG RX-78-2" vs. just "RX-78-2") — more specific
-  terms mean fewer irrelevant results.
+- `categories`: maps a category label to the broad search term used for
+  it, e.g. `{"gundam": "gundam", "zoid": "zoids"}`. Change the query text
+  if a site's search works better with something more specific — the
+  label on the left (`gundam`/`zoid`) is what the tracker app filters by,
+  the text on the right is what actually gets searched.
+- `max_pages_per_site`: how deep to page into each site's results, per
+  category, per run. Start at 2–3 and raise it once pagination is
+  confirmed working for a given site (see above).
 - Each site has an `"enabled": true/false` flag — turn off any you don't want.
+- `ebay.max_results`: cap on how many eBay listings to pull per category
+  per run (paginated via the API, 50 at a time).
 
 ### Getting an eBay API key (free)
 
@@ -157,40 +183,46 @@ especially before scaling up frequency or request volume. Where a site
 offers an official API for this purpose (eBay does), the script uses that
 instead of scraping.
 
-## Connecting the tracker app's "Refresh Prices" button
+## Connecting the tracker app
 
-The tracker app now has a **Refresh Prices** button and a settings (⚙)
-panel. Here's how they use this scraper's output:
+The tracker app has two ways of using this scraper's output now that it's
+a full-catalog crawl instead of specific kit names:
 
-1. **Match terms.** Each kit in the tracker can have an optional "Match
-   term" — this should be exactly the same string as one of your
-   `search_terms` in `config.json`. If you leave it blank, the tracker
-   falls back to matching on the kit's name, so keep the kit name and the
-   search term identical if you don't want to bother setting it separately.
-2. **Publish `latest_full.json` somewhere public.** The button fetches
-   this file directly from your browser, so it needs a URL that's
-   reachable over the open internet and allows cross-origin requests. The
-   easiest option if you're using the GitHub Actions setup below: use a
-   **public** repo (private repos require auth the browser can't provide)
-   and point the tracker at the raw file, e.g.:
-   ```
-   https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/output/latest_full.json
-   ```
-   `raw.githubusercontent.com` allows cross-origin fetches, so this works
-   without any extra server. If you'd rather keep the repo private, host
-   `latest_full.json` somewhere else public instead (e.g. a public S3
-   bucket, GitHub Pages, or any static host with CORS enabled) — a private
-   GitHub repo's raw URL will fail with a 404/401 from the browser.
-3. **Paste that URL into the tracker's ⚙ settings** and save. From then on,
-   **Refresh Prices** fetches it, matches each result's `search_term` to a
-   kit's match term, and adds any listing it hasn't already recorded
-   (deduped by seller + price + URL) as a new price entry — so history
-   builds up over time rather than being overwritten each refresh.
+- **Browse All tab** — shows every listing from the latest run directly,
+  filterable by Gundam/Zoid, searchable, sortable by price. This needs no
+  setup beyond pointing the app at your data (next step) — there's nothing
+  to name or match ahead of time.
+- **My Kits tab** — your existing curated watchlist with price history
+  over time. Each kit can have an optional "Match term"; on refresh, the
+  app pulls in any scraped listing whose **title contains** that term
+  (case-insensitive), rather than requiring an exact match — so a kit
+  named "RX-78-2" with match term "rx-78-2" will pick up "MG 1/100
+  RX-78-2 Gundam Ver. 2.0", "HGUC RX-78-2 Gundam Revive", etc. from
+  across every site.
+
+To wire either of these up: **publish `latest_full.json` somewhere
+public.** The app fetches this file directly from your browser, so it
+needs a URL that's reachable over the open internet and allows
+cross-origin requests. The easiest option if you're using the GitHub
+Actions setup below: use a **public** repo (private repos require auth
+the browser can't provide) and point the app at the raw file, e.g.:
+```
+https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/output/latest_full.json
+```
+`raw.githubusercontent.com` allows cross-origin fetches, so this works
+without any extra server. If you'd rather keep the repo private, host
+`latest_full.json` somewhere else public instead (e.g. a public S3
+bucket, GitHub Pages, or any static host with CORS enabled) — a private
+GitHub repo's raw URL will fail with a 404/401 from the browser.
+
+Paste that URL into the app's ⚙ settings and save. From then on it
+fetches fresh data automatically every time you open the app, and you can
+also force a re-pull with the Refresh Prices button.
 
 If you're not using GitHub Actions and running this locally/on cron
 instead, you'll need some other way to make `output/latest_full.json`
-reachable by URL for the button to use — otherwise just open the file
-yourself after each run and add anything interesting by hand.
+reachable by URL — otherwise just open the file yourself after each run
+and add anything interesting to My Kits by hand.
 
 ## Shipping cost
 

@@ -1,13 +1,16 @@
 {
-  "search_terms": [
-    "RX-78-2 Gundam MG",
-    "Liger Zero Zoid"
-  ],
+  "categories": {
+    "gundam": "gundam",
+    "zoid": "zoids"
+  },
+  "max_pages_per_site": 3,
+
   "ebay": {
     "enabled": true,
     "app_id": "YOUR_EBAY_APP_ID",
     "cert_id": "YOUR_EBAY_CERT_ID",
-    "marketplace": "EBAY_US"
+    "marketplace": "EBAY_US",
+    "max_results": 150
   },
   "mercari": { "enabled": false },
   "amazon": { "enabled": false },
