@@ -1,12 +1,13 @@
 {
-  "search_terms": [
-    "RX-78-2 Gundam",
-    "Liger Zero"
-  ],
+  "categories": {
+    "gundam": "gundam",
+    "zoid": "zoids"
+  },
+  "max_pages_per_site": 3,
   "ebay": {
     "enabled": true,
     "app_id": "AndreiIo-gundamzo-PRD-301527515-e1204f23",
-    "cert_id": "PRD-01527515cadd-e73d-4968-b834-72e4",
+    "cert_id": "PRD-017de36fe825-d767-4fea-8dd5-cbb9",
     "marketplace": "EBAY_US"
   },
   "mercari": { "enabled": false },
