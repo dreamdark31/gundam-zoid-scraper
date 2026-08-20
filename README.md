@@ -1,0 +1,203 @@
+# Gundam & Zoid price scraper
+
+Checks your search terms against several retailers once per run and writes:
+
+- `output/prices_YYYY-MM-DD.csv` — every listing found that day
+- `output/latest.json` — the cheapest listing per search term
+- `output/latest_full.json` — every listing found that day, as a flat list —
+  **this is the file the tracker app's "Refresh Prices" button reads**
+
+## Sites covered
+
+| Site | Method | Status |
+|---|---|---|
+| eBay | Official Browse API | Needs a free API key (see below) |
+| HobbyLink Japan | HTML scrape | Enabled — **verify selectors first** |
+| BigBadToyStore | HTML scrape | Enabled — **verify selectors first** |
+| Mandarake | HTML scrape | Enabled — **verify selectors first** |
+| Plaza Japan | HTML scrape | Enabled — **verify selectors first** |
+| Gundam Planet | HTML scrape | Enabled — **verify selectors first** |
+| HLJ.com | HTML scrape | Enabled — **verify selectors first**, see note below |
+| Gundam Place Store | HTML scrape | Enabled — **verify selectors first** |
+| Otaku Mode | HTML scrape | Enabled — **verify selectors first** |
+| 1999.co.jp | HTML scrape | Enabled — **verify selectors first** |
+| Image Anime | HTML scrape | Enabled — **verify selectors first** |
+| USA Gundam Store | HTML scrape | Enabled — **verify selectors first** |
+| GundamIT | HTML scrape | Enabled — **verify selectors first** |
+| Gundam Model Center | HTML scrape | Enabled — **verify selectors first** |
+| Gundam Central Shop | HTML scrape | Enabled — **verify selectors first** |
+| Mercari | — | Disabled — site is JS-rendered, see below |
+| Amazon | — | Disabled on purpose, see below |
+
+### Heads up: HLJ.com vs. HobbyLink Japan
+
+`hlj.com` and `hobbylinkjapan.com` may well be the same retailer under two
+domains — I couldn't check from here. Worth confirming before you rely on
+both as independent price points; if they're the same store, disable one
+of them in `config.json` so it doesn't double-count in comparisons.
+
+### New sites are unverified guesses, more so than the original four
+
+The five sites added in the first pass (HLJ, BBTS, Mandarake, Plaza Japan)
+already needed selector verification. The ten sites added after that are
+in the same boat but I have even less specific knowledge of their exact
+page structure — I used generic Shopify-storefront defaults
+(`.product-card`, `.price`, etc.) for most of them since that's a common
+platform for small hobby shops, but several may run something else
+entirely (WooCommerce, a custom cart) with different markup. Budget time
+to check each one against the real page before trusting its output.
+
+### Why the HTML scrapers need "verifying"
+
+I wrote the CSS selectors (`.select(...)` calls in `scraper.py`) from general
+knowledge of how these sites are typically structured, but I have no network
+access to load the actual pages and check. Site markup changes and I can't
+guarantee these are correct today. **Run the script once by hand first**:
+
+```
+python scraper.py
+```
+
+Then open `output/prices_*.csv`. If a site returns 0 results, open its
+search page in your own browser, right-click a product tile → Inspect, and
+update the matching `.select(...)` line in `scraper.py` to match the real
+class names. This is the normal maintenance loop for any scraper — sites
+redesign their pages every so often and selectors need the occasional fix.
+
+### Why Amazon isn't implemented
+
+Amazon's anti-bot systems are aggressive and its Conditions of Use restrict
+automated scraping. If you want Amazon prices, use the official [Product
+Advertising API](https://webservices.amazon.com/paapi5/documentation/)
+(requires an Amazon Associates account) rather than scraping HTML.
+
+### Why Mercari isn't implemented
+
+Mercari's search results are loaded via JavaScript after the page loads, so
+`requests` + `BeautifulSoup` only ever sees an empty shell. Getting real
+results needs a browser-automation tool like
+[Playwright](https://playwright.dev/python/) instead. If you want this
+added, say so and I'll write it — it's a different approach (spins up a
+headless browser) rather than a tweak to the existing function.
+
+## Setup
+
+```bash
+cd gundam-zoid-scraper
+pip install -r requirements.txt
+cp config.example.json config.json
+```
+
+Edit `config.json`:
+- `search_terms`: the kit names you're tracking, one string per kit. Be as
+  specific as you want ("MG RX-78-2" vs. just "RX-78-2") — more specific
+  terms mean fewer irrelevant results.
+- Each site has an `"enabled": true/false` flag — turn off any you don't want.
+
+### Getting an eBay API key (free)
+
+1. Create an account at [developer.ebay.com](https://developer.ebay.com/).
+2. Create a "Production" keyset for an application.
+3. Copy the App ID and Cert ID into `config.json` under `"ebay"`, or set
+   them as the `EBAY_APP_ID` / `EBAY_CERT_ID` environment variables (the
+   script prefers env vars over the file, so you don't have to commit real
+   credentials anywhere).
+
+## Running it daily without your computer needing to be on
+
+You picked "automated, runs on its own" — the way to get that without
+renting a server is **GitHub Actions**, which is free for a script this
+light. It's already set up in this project:
+
+1. Create a new GitHub repo and push this folder to it. Use a **public**
+   repo if you want the tracker app's Refresh Prices button to work via
+   `raw.githubusercontent.com` (see below) — a private repo's raw URLs
+   require auth the browser can't provide. Nothing sensitive lives in this
+   repo as long as you keep API keys out of `config.json` and use secrets
+   instead (next step), so public is reasonable here.
+2. In the repo, go to **Settings → Secrets and variables → Actions** and
+   add `EBAY_APP_ID` and `EBAY_CERT_ID` as secrets (skip if you're not
+   using eBay).
+3. That's it — `.github/workflows/daily-scrape.yml` runs the scraper every
+   day at 13:00 UTC and commits the new CSV/JSON back into the repo under
+   `output/`. Adjust the `cron:` line in that file to change the time
+   (cron time is always UTC).
+4. You can also trigger a run immediately from the repo's **Actions** tab
+   → "Daily price scrape" → **Run workflow**, which is the fastest way to
+   confirm it's working before you wait for the schedule.
+
+### Alternative: cron on your own machine (Mac/Linux)
+
+If you'd rather run it locally instead of on GitHub:
+
+```bash
+crontab -e
+```
+
+Add a line (runs at 9am daily):
+
+```
+0 9 * * * cd /full/path/to/gundam-zoid-scraper && /usr/bin/python3 scraper.py >> output/run.log 2>&1
+```
+
+### Alternative: Task Scheduler on Windows
+
+Task Scheduler → Create Basic Task → Daily → set the action to run
+`python.exe` with argument `scraper.py` and "Start in" set to the project
+folder.
+
+## A note on Terms of Service
+
+Every site here has its own ToS, and several restrict automated access in
+some form. This script is written to be low-volume and polite (a few
+seconds between requests, one run a day, a normal browser User-Agent) but
+that doesn't make it compliant with every site's specific terms — that's
+worth checking yourself for any site you're relying on long-term,
+especially before scaling up frequency or request volume. Where a site
+offers an official API for this purpose (eBay does), the script uses that
+instead of scraping.
+
+## Connecting the tracker app's "Refresh Prices" button
+
+The tracker app now has a **Refresh Prices** button and a settings (⚙)
+panel. Here's how they use this scraper's output:
+
+1. **Match terms.** Each kit in the tracker can have an optional "Match
+   term" — this should be exactly the same string as one of your
+   `search_terms` in `config.json`. If you leave it blank, the tracker
+   falls back to matching on the kit's name, so keep the kit name and the
+   search term identical if you don't want to bother setting it separately.
+2. **Publish `latest_full.json` somewhere public.** The button fetches
+   this file directly from your browser, so it needs a URL that's
+   reachable over the open internet and allows cross-origin requests. The
+   easiest option if you're using the GitHub Actions setup below: use a
+   **public** repo (private repos require auth the browser can't provide)
+   and point the tracker at the raw file, e.g.:
+   ```
+   https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/output/latest_full.json
+   ```
+   `raw.githubusercontent.com` allows cross-origin fetches, so this works
+   without any extra server. If you'd rather keep the repo private, host
+   `latest_full.json` somewhere else public instead (e.g. a public S3
+   bucket, GitHub Pages, or any static host with CORS enabled) — a private
+   GitHub repo's raw URL will fail with a 404/401 from the browser.
+3. **Paste that URL into the tracker's ⚙ settings** and save. From then on,
+   **Refresh Prices** fetches it, matches each result's `search_term` to a
+   kit's match term, and adds any listing it hasn't already recorded
+   (deduped by seller + price + URL) as a new price entry — so history
+   builds up over time rather than being overwritten each refresh.
+
+If you're not using GitHub Actions and running this locally/on cron
+instead, you'll need some other way to make `output/latest_full.json`
+reachable by URL for the button to use — otherwise just open the file
+yourself after each run and add anything interesting by hand.
+
+## Shipping cost
+
+`latest_full.json` now includes a `shipping` field per result. eBay's
+Browse API sometimes provides it (only when shipping is a fixed cost, not
+"calculated" — those come through as `null`). The HTML-scraped sites don't
+expose shipping on their search-results pages at all, so those always come
+through as `null`. The tracker app has an "Include shipping" toggle and
+lets you fill in a shipping cost by hand on any listing (via the "+ship"
+link in a kit's history) when the scraper couldn't get one automatically.

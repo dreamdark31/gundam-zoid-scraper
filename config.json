@@ -1,0 +1,29 @@
+{
+  "search_terms": [
+    "RX-78-2 Gundam",
+    "Liger Zero"
+  ],
+  "ebay": {
+    "enabled": true,
+    "app_id": "AndreiIo-gundamzo-PRD-301527515-e1204f23",
+    "cert_id": "PRD-01527515cadd-e73d-4968-b834-72e4",
+    "marketplace": "EBAY_US"
+  },
+  "mercari": { "enabled": false },
+  "amazon": { "enabled": false },
+
+  "hobbylinkjapan": { "enabled": true },
+  "bbts": { "enabled": true },
+  "mandarake": { "enabled": true },
+  "plazajapan": { "enabled": true },
+  "gundamplanet": { "enabled": true },
+  "hlj_com": { "enabled": true },
+  "gundamplacestore": { "enabled": true },
+  "otakumode": { "enabled": true },
+  "1999": { "enabled": true },
+  "imageanime": { "enabled": true },
+  "usagundamstore": { "enabled": true },
+  "gundamit": { "enabled": true },
+  "gundammodelcenter": { "enabled": true },
+  "gundamcentralshop": { "enabled": true }
+}

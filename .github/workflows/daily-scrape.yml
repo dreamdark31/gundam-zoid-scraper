@@ -1,0 +1,34 @@
+name: Daily price scrape
+
+on:
+  schedule:
+    # 13:00 UTC every day — edit to taste (cron is UTC, not your local time)
+    - cron: "0 13 * * *"
+  workflow_dispatch: {}   # lets you also trigger it manually from the Actions tab
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        env:
+          EBAY_APP_ID: ${{ secrets.EBAY_APP_ID }}
+          EBAY_CERT_ID: ${{ secrets.EBAY_CERT_ID }}
+        run: python scraper.py
+
+      - name: Commit results
+        run: |
+          git config user.name "price-scraper-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/
+          git diff --cached --quiet || git commit -m "Daily price scrape $(date -u +%F)"
+          git push

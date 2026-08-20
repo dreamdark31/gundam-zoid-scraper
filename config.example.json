@@ -1,0 +1,29 @@
+{
+  "search_terms": [
+    "RX-78-2 Gundam MG",
+    "Liger Zero Zoid"
+  ],
+  "ebay": {
+    "enabled": true,
+    "app_id": "YOUR_EBAY_APP_ID",
+    "cert_id": "YOUR_EBAY_CERT_ID",
+    "marketplace": "EBAY_US"
+  },
+  "mercari": { "enabled": false },
+  "amazon": { "enabled": false },
+
+  "hobbylinkjapan": { "enabled": true },
+  "bbts": { "enabled": true },
+  "mandarake": { "enabled": true },
+  "plazajapan": { "enabled": true },
+  "gundamplanet": { "enabled": true },
+  "hlj_com": { "enabled": true },
+  "gundamplacestore": { "enabled": true },
+  "otakumode": { "enabled": true },
+  "1999": { "enabled": true },
+  "imageanime": { "enabled": true },
+  "usagundamstore": { "enabled": true },
+  "gundamit": { "enabled": true },
+  "gundammodelcenter": { "enabled": true },
+  "gundamcentralshop": { "enabled": true }
+}
