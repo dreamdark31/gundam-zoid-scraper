@@ -94,6 +94,7 @@ DEFAULT_SHOPIFY_SELECTORS = {
 SITE_DEFS = {
     "hobbylinkjapan": {
         "name": "HobbyLink Japan",
+        "site_type": "retailer",
         "search_url": "https://www.hobbylinkjapan.com/search/?keywords={q}",
         "base_url": "https://www.hobbylinkjapan.com",
         "currency": "USD",
@@ -103,6 +104,7 @@ SITE_DEFS = {
     },
     "bbts": {
         "name": "BigBadToyStore",
+        "site_type": "retailer",
         "search_url": "https://www.bigbadtoystore.com/Search?SearchText={q}",
         "base_url": "https://www.bigbadtoystore.com",
         "currency": "USD",
@@ -113,6 +115,7 @@ SITE_DEFS = {
     },
     "mandarake": {
         "name": "Mandarake",
+        "site_type": "marketplace",
         "search_url": "https://order.mandarake.co.jp/order/listPage/list?keyword={q}&lang=en",
         "base_url": "https://order.mandarake.co.jp",
         "currency": "JPY",
@@ -122,6 +125,7 @@ SITE_DEFS = {
     },
     "plazajapan": {
         "name": "Plaza Japan",
+        "site_type": "retailer",
         "search_url": "https://www.plazajapan.com/catalogsearch/result/?q={q}",
         "base_url": "https://www.plazajapan.com",
         "currency": "USD",
@@ -132,12 +136,14 @@ SITE_DEFS = {
     },
     "gundamplanet": {
         "name": "Gundam Planet",
+        "site_type": "retailer",
         "search_url": "https://www.gundamplanet.com/search?q={q}&type=product",
         "base_url": "https://www.gundamplanet.com",
         "currency": "USD",
     },
     "hlj_com": {
         "name": "HLJ.com",
+        "site_type": "retailer",
         "search_url": "https://www.hlj.com/catalogsearch/result/?q={q}",
         "base_url": "https://www.hlj.com",
         "currency": "USD",
@@ -148,18 +154,21 @@ SITE_DEFS = {
     },
     "gundamplacestore": {
         "name": "Gundam Place Store",
+        "site_type": "retailer",
         "search_url": "https://gundamplacestore.com/search?q={q}",
         "base_url": "https://gundamplacestore.com",
         "currency": "USD",
     },
     "otakumode": {
         "name": "Otaku Mode",
+        "site_type": "retailer",
         "search_url": "https://otakumode.com/shop/search?q={q}",
         "base_url": "https://otakumode.com",
         "currency": "USD",
     },
     "1999": {
         "name": "1999.co.jp",
+        "site_type": "retailer",
         "search_url": "https://www.1999.co.jp/eng/search?keyword={q}",
         "base_url": "https://www.1999.co.jp",
         "currency": "JPY",
@@ -169,35 +178,81 @@ SITE_DEFS = {
     },
     "imageanime": {
         "name": "Image Anime",
+        "site_type": "retailer",
         "search_url": "https://www.imageanime.com/search?q={q}",
         "base_url": "https://www.imageanime.com",
         "currency": "USD",
     },
     "usagundamstore": {
         "name": "USA Gundam Store",
+        "site_type": "retailer",
         "search_url": "https://www.usagundamstore.com/search?q={q}",
         "base_url": "https://www.usagundamstore.com",
         "currency": "USD",
     },
     "gundamit": {
         "name": "GundamIT",
+        "site_type": "retailer",
         "search_url": "https://gundamit.com/search?q={q}",
         "base_url": "https://gundamit.com",
         "currency": "USD",
     },
     "gundammodelcenter": {
         "name": "Gundam Model Center",
+        "site_type": "retailer",
         "search_url": "https://www.gundammodelcenter.com/search?q={q}",
         "base_url": "https://www.gundammodelcenter.com",
         "currency": "USD",
     },
     "gundamcentralshop": {
         "name": "Gundam Central Shop",
+        "site_type": "retailer",
         "search_url": "https://www.gundamcentralshop.com/search?q={q}",
         "base_url": "https://www.gundamcentralshop.com",
         "currency": "USD",
     },
+    "kotobukiya": {
+        "name": "Kotobukiya USA",
+        "search_url": "https://www.kotobukiya-shop.com/search?q={q}",
+        "base_url": "https://www.kotobukiya-shop.com",
+        "currency": "USD",
+        "site_type": "retailer",
+    },
 }
+
+# ---------------------------------------------------------------------------
+# Non-kit filter. eBay's category restriction (above) keeps its results to
+# actual model kits, but the HTML-scraped retail sites have no equivalent
+# category API — a plain "gundam"/"zoids" search on them can still surface
+# trading cards, plush, keychains, apparel, and similar merch alongside
+# actual kits. This is a best-effort keyword blacklist applied to every
+# site's results, not a guarantee — tune the list below if you spot either
+# false positives (a real kit getting filtered out) or false negatives
+# (junk still getting through).
+# ---------------------------------------------------------------------------
+NON_KIT_KEYWORDS = [
+    "trading card", "tcg", "ccg", "card game", "playing card", "carddass",
+    "card set", "booster pack", "booster box",
+    "sticker", "stickers", "decal sheet",
+    "keychain", "key chain", "keyring", "key ring", "lanyard",
+    "acrylic stand", "acrylic keychain", "nendoroid",
+    "plush", "plushie", "stuffed",
+    "poster", "wall scroll", "postcard", "calendar",
+    "t-shirt", "tshirt", "hoodie", "sweatshirt", "apparel",
+    "mug", "tumbler", "coaster",
+    "patch", "pin badge", "enamel pin", "button badge",
+    "phone case", "wallet", "tote bag", "backpack",
+    "notebook", "bookmark", "clear file", "folder",
+    "artbook", "art book", "guide book", "magazine",
+    "jigsaw puzzle",
+]
+
+
+def is_probably_kit(title):
+    if not title:
+        return True  # don't drop items we can't evaluate
+    t = title.lower()
+    return not any(kw in t for kw in NON_KIT_KEYWORDS)
 
 
 def polite_sleep(lo=2.5, hi=5.5):
@@ -257,6 +312,7 @@ def scrape_generic_page(query, site_key, page):
             href = site["base_url"] + href
         results.append({
             "site": site["name"],
+            "site_type": site.get("site_type", "retailer"),
             "title": title_el.get_text(strip=True),
             "price": price,
             "shipping": None,  # search-results pages almost never show this
@@ -326,6 +382,15 @@ def scrape_ebay_catalog(query, cfg, max_results):
         log.warning(f"    [ebay] auth failed: {e}")
         return []
 
+    # Restrict to eBay's "Models & Kits" category (under Toys & Hobbies) so
+    # results are actual model kits rather than trading cards, plush,
+    # keychains, etc. that also turn up on a plain "gundam"/"zoids" text
+    # search. Category ID confirmed against eBay's own category browse
+    # URLs (https://www.ebay.com/b/Toy-Models-Kits/1188/...) — override via
+    # config.json's "category_id" under "ebay" if this ever changes or if
+    # you want a different category.
+    category_id = cfg.get("category_id", "1188")
+
     results = []
     offset = 0
     page_size = 50
@@ -337,7 +402,12 @@ def scrape_ebay_catalog(query, cfg, max_results):
                     "Authorization": f"Bearer {token}",
                     "X-EBAY-C-MARKETPLACE-ID": cfg.get("marketplace", "EBAY_US"),
                 },
-                params={"q": query, "limit": min(page_size, max_results - offset), "offset": offset},
+                params={
+                    "q": query,
+                    "category_ids": category_id,
+                    "limit": min(page_size, max_results - offset),
+                    "offset": offset,
+                },
                 timeout=15,
             )
             resp.raise_for_status()
@@ -359,6 +429,7 @@ def scrape_ebay_catalog(query, cfg, max_results):
                     break
             results.append({
                 "site": "eBay",
+                "site_type": "marketplace",
                 "title": it.get("title"),
                 "price": parse_price(price.get("value")),
                 "shipping": shipping,
@@ -417,11 +488,13 @@ def run():
         if ebay_cfg.get("enabled", False):
             log.info("  -> ebay")
             results = scrape_ebay_catalog(query, ebay_cfg, max_ebay_results)
-            log.info(f"     {len(results)} result(s)")
-            for r in results:
+            kept = [r for r in results if is_probably_kit(r.get("title"))]
+            dropped = len(results) - len(kept)
+            log.info(f"     {len(kept)} result(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
+            for r in kept:
                 r["category"] = category
                 r["query"] = query
-            all_results.extend(results)
+            all_results.extend(kept)
             polite_sleep()
 
         mercari_cfg = cfg.get("mercari", {})
@@ -440,11 +513,13 @@ def run():
                 continue
             log.info(f"  -> {site_key}")
             results = scrape_generic_catalog(query, site_key, max_pages)
-            log.info(f"     {len(results)} result(s) across up to {max_pages} page(s)")
-            for r in results:
+            kept = [r for r in results if is_probably_kit(r.get("title"))]
+            dropped = len(results) - len(kept)
+            log.info(f"     {len(kept)} result(s) across up to {max_pages} page(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
+            for r in kept:
                 r["category"] = category
                 r["query"] = query
-            all_results.extend(results)
+            all_results.extend(kept)
             polite_sleep()
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -453,7 +528,7 @@ def run():
     csv_path = os.path.join(OUTPUT_DIR, f"prices_{date_str}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["category", "site", "title", "price", "shipping", "currency", "condition", "url"]
+            f, fieldnames=["category", "site", "site_type", "title", "price", "shipping", "currency", "condition", "url"]
         )
         writer.writeheader()
         for r in all_results:

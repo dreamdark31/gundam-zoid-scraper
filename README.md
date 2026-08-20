@@ -16,25 +16,40 @@ you've confirmed a site's pagination actually works (see below).
 
 ## Sites covered
 
-| Site | Method | Status |
-|---|---|---|
-| eBay | Official Browse API | Needs a free API key (see below) |
-| HobbyLink Japan | HTML scrape | Enabled — **verify selectors first** |
-| BigBadToyStore | HTML scrape | Enabled — **verify selectors first** |
-| Mandarake | HTML scrape | Enabled — **verify selectors first** |
-| Plaza Japan | HTML scrape | Enabled — **verify selectors first** |
-| Gundam Planet | HTML scrape | Enabled — **verify selectors first** |
-| HLJ.com | HTML scrape | Enabled — **verify selectors first**, see note below |
-| Gundam Place Store | HTML scrape | Enabled — **verify selectors first** |
-| Otaku Mode | HTML scrape | Enabled — **verify selectors first** |
-| 1999.co.jp | HTML scrape | Enabled — **verify selectors first** |
-| Image Anime | HTML scrape | Enabled — **verify selectors first** |
-| USA Gundam Store | HTML scrape | Enabled — **verify selectors first** |
-| GundamIT | HTML scrape | Enabled — **verify selectors first** |
-| Gundam Model Center | HTML scrape | Enabled — **verify selectors first** |
-| Gundam Central Shop | HTML scrape | Enabled — **verify selectors first** |
-| Mercari | — | Disabled — site is JS-rendered, see below |
-| Amazon | — | Disabled on purpose, see below |
+Each site is also tagged `retailer` or `marketplace` in the output
+(`site_type` field) — retailers sell new stock directly, marketplaces are
+resale/auction/mixed-seller platforms. This lets the tracker app filter
+"official retailers" separately from "resale/marketplace" listings.
+
+| Site | Type | Method | Status |
+|---|---|---|---|
+| eBay | marketplace | Official Browse API | Needs a free API key (see below) |
+| HobbyLink Japan | retailer | HTML scrape | Enabled — **verify selectors first** |
+| BigBadToyStore | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Mandarake | marketplace | HTML scrape | Enabled — **verify selectors first** |
+| Plaza Japan | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Gundam Planet | retailer | HTML scrape | Enabled — **verify selectors first** |
+| HLJ.com | retailer | HTML scrape | Enabled — **verify selectors first**, see note below |
+| Gundam Place Store | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Otaku Mode | retailer | HTML scrape | Enabled — **verify selectors first** |
+| 1999.co.jp | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Image Anime | retailer | HTML scrape | Enabled — **verify selectors first** |
+| USA Gundam Store | retailer | HTML scrape | Enabled — **verify selectors first** |
+| GundamIT | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Gundam Model Center | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Gundam Central Shop | retailer | HTML scrape | Enabled — **verify selectors first** |
+| Kotobukiya USA | retailer | HTML scrape | Enabled — **verify selectors first**, URL guessed, see note below |
+| Mercari | marketplace | — | Disabled — site is JS-rendered, see below |
+| Amazon | marketplace | — | Disabled on purpose, see below |
+
+### Heads up: Kotobukiya's URL is a guess
+
+I don't have a confirmed URL for Kotobukiya's US storefront — I used
+`kotobukiya-shop.com` as a best guess, but their actual shop domain may be
+different (they also sell through hobbylinkjapan.com and other retailers
+listed here in some regions). Check this one against the real site before
+relying on it; if the domain's wrong the request will just fail cleanly
+and log 0 results rather than error out.
 
 ### Heads up: HLJ.com vs. HobbyLink Japan
 
@@ -189,9 +204,9 @@ The tracker app has two ways of using this scraper's output now that it's
 a full-catalog crawl instead of specific kit names:
 
 - **Browse All tab** — shows every listing from the latest run directly,
-  filterable by Gundam/Zoid, searchable, sortable by price. This needs no
-  setup beyond pointing the app at your data (next step) — there's nothing
-  to name or match ahead of time.
+  filterable by Gundam/Zoid and by retailer-vs-marketplace, searchable,
+  sortable by price. This needs no setup beyond pointing the app at your
+  data (next step) — there's nothing to name or match ahead of time.
 - **My Kits tab** — your existing curated watchlist with price history
   over time. Each kit can have an optional "Match term"; on refresh, the
   app pulls in any scraped listing whose **title contains** that term
@@ -233,3 +248,26 @@ expose shipping on their search-results pages at all, so those always come
 through as `null`. The tracker app has an "Include shipping" toggle and
 lets you fill in a shipping cost by hand on any listing (via the "+ship"
 link in a kit's history) when the scraper couldn't get one automatically.
+
+## Keeping results to actual model kits
+
+A plain "gundam"/"zoids" text search turns up more than kits — trading
+cards, plush, keychains, apparel, and similar merch use the same words in
+their titles. Two things narrow this down:
+
+- **eBay** is restricted to eBay's own "Models & Kits" category
+  (`category_ids=1188` in the Browse API call) rather than a plain
+  keyword search, so non-kit listings are excluded at the source. I
+  confirmed 1188 against eBay's own category browse URLs, but if it
+  ever seems wrong, override it in `config.json`:
+  ```json
+  "ebay": { "category_id": "1234", ... }
+  ```
+- **Every other site** goes through a keyword blacklist
+  (`NON_KIT_KEYWORDS` near the top of `scraper.py`) that drops any result
+  whose title contains things like "trading card," "keychain," "plush,"
+  "poster," "t-shirt," etc. — there's no category API to lean on for
+  these sites, so this is a best-effort text filter, not a guarantee.
+  If a real kit gets wrongly filtered (a title happens to contain one of
+  the blacklisted words) or junk gets through, edit that list directly —
+  it's a plain Python list, no other code needs to change.
