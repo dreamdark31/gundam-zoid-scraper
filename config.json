@@ -26,5 +26,6 @@
   "usagundamstore": { "enabled": true },
   "gundamit": { "enabled": true },
   "gundammodelcenter": { "enabled": true },
-  "gundamcentralshop": { "enabled": true }
+  "gundamcentralshop": { "enabled": true },
+  "kotobukiya": { "enabled": true }
 }
