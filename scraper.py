@@ -264,9 +264,16 @@ SITE_DEFS = {
         "currency": "USD",
     },
     "usagundamstore": {
+        # Confirmed via the site's Network tab: search results are loaded
+        # by JavaScript from Searchspring (a third-party search platform),
+        # not present in the page's own HTML — so this uses a dedicated
+        # JSON API backend (scrape_searchspring_catalog) instead of the
+        # generic HTML scraper. Field names (name/price/url/imageUrl)
+        # confirmed against a real response.
         "name": "USA Gundam Store",
         "site_type": "retailer",
-        "search_url": "https://www.usagundamstore.com/search?q={q}",
+        "backend": "searchspring",
+        "searchspring_site_id": "ckt36l",
         "base_url": "https://www.usagundamstore.com",
         "currency": "USD",
     },
@@ -447,6 +454,80 @@ def scrape_generic_catalog(query, site_key, max_pages):
 
 
 # ---------------------------------------------------------------------------
+# Searchspring — a third-party search platform some Shopify stores plug in
+# instead of Shopify's own search. When that's the case, the storefront's
+# own search results page is JS-rendered and invisible to a plain HTML
+# scrape (confirmed via "View Page Source" showing no product data at all
+# for USAGundamStore) — but Searchspring's search API itself is public
+# JSON, documented at docs.searchspring.com, and far more reliable to
+# parse than guessing HTML selectors. If another site turns out to use
+# Searchspring too (check its Network tab for a *.searchspring.io request
+# the same way), give it "backend": "searchspring" and a
+# "searchspring_site_id" in SITE_DEFS instead of writing new selectors.
+# ---------------------------------------------------------------------------
+
+def scrape_searchspring_page(query, site, page, results_per_page=48):
+    site_id = site["searchspring_site_id"]
+    try:
+        resp = requests.get(
+            f"https://{site_id}.a.searchspring.io/api/search/search.json",
+            headers=HEADERS,
+            params={
+                "siteId": site_id,
+                "q": query,
+                "resultsFormat": "native",
+                "page": page,
+                "resultsPerPage": results_per_page,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        log.warning(f"    fetch failed for Searchspring ({site['name']}): {e}")
+        return [], 0
+
+    data = resp.json()
+    items = data.get("results", [])
+    total_pages = data.get("pagination", {}).get("totalPages", page)
+
+    results = []
+    for it in items:
+        price = parse_price(it.get("price"))
+        if price is None:
+            continue
+        url = it.get("url") or ""
+        if url.startswith("/"):
+            url = site["base_url"] + url
+        results.append({
+            "site": site["name"],
+            "site_type": site.get("site_type", "retailer"),
+            "title": it.get("name", ""),
+            "price": price,
+            "shipping": None,
+            "currency": site.get("currency", "USD"),
+            "condition": "New",
+            "url": url,
+            "image_url": it.get("imageUrl"),
+        })
+    return results, total_pages
+
+
+def scrape_searchspring_catalog(query, site_key, max_pages):
+    site = SITE_DEFS[site_key]
+    all_results = []
+    for page in range(1, max_pages + 1):
+        page_results, total_pages = scrape_searchspring_page(query, site, page)
+        if not page_results:
+            break
+        all_results.extend(page_results)
+        if page >= total_pages:
+            break
+        if page < max_pages:
+            polite_sleep()
+    return all_results
+
+
+# ---------------------------------------------------------------------------
 # eBay — uses the official Browse API (needs a free developer app id/cert id
 # from developer.ebay.com), paginated via offset until `max_results` is hit
 # or eBay reports no more items.
@@ -612,7 +693,10 @@ def run():
             if not site_cfg.get("enabled", False):
                 continue
             log.info(f"  -> {site_key}")
-            results = scrape_generic_catalog(query, site_key, max_pages)
+            if SITE_DEFS[site_key].get("backend") == "searchspring":
+                results = scrape_searchspring_catalog(query, site_key, max_pages)
+            else:
+                results = scrape_generic_catalog(query, site_key, max_pages)
             kept = [r for r in results if is_probably_kit(r.get("title"))]
             dropped = len(results) - len(kept)
             log.info(f"     {len(kept)} result(s) across up to {max_pages} page(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
