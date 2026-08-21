@@ -347,7 +347,7 @@ CARD_KEYWORDS = [
     "card set", "booster pack", "booster box", "trading figure",
 ]
 OTHER_PRODUCT_KEYWORDS = [
-    "sticker", "stickers", "decal sheet",
+    "sticker", "stickers", "decal sheet", "decal set", "water slide decal", "dry decal",
     "keychain", "key chain", "keyring", "key ring", "lanyard",
     "acrylic stand", "acrylic keychain", "nendoroid",
     "plush", "plushie", "stuffed",
@@ -359,6 +359,13 @@ OTHER_PRODUCT_KEYWORDS = [
     "notebook", "bookmark", "clear file", "folder",
     "artbook", "art book", "guide book", "magazine",
     "jigsaw puzzle",
+    # Build supplies / tools — used alongside kits, not kits themselves.
+    "marker", "markers", "paint marker", "paint pen",
+    "paint", "spray paint", "lacquer", "acrylic paint", "primer",
+    "cement", "glue", "adhesive", "putty",
+    "topcoat", "top coat", "panel liner", "panel line accent",
+    "nippers", "side cutter", "cutter", "tool set", "tweezers", "paintbrush", "airbrush",
+    "display base", "display stand",
 ]
 
 
