@@ -1,18 +1,20 @@
 {
-  "generated_at": "2026-08-21T22:30:57.366472+00:00",
+  "generated_at": "2026-08-21T22:52:01.244342+00:00",
   "cheapest_by_category": {
     "gundam": {
-      "site": "USA Gundam Store",
-      "site_type": "retailer",
-      "title": "GM02 Gray Fine Point Gundam Marker",
-      "price": 3.39,
-      "shipping": null,
+      "site": "eBay",
+      "site_type": "marketplace",
+      "title": "GUNDAM Trading Card Game (TCG) FREEDOM ASCENSION Cards *You Pick - 5% off 4+",
+      "price": 1.49,
+      "shipping": 0.0,
+      "pickup": false,
       "currency": "USD",
-      "condition": "New",
-      "url": "https://www.usagundamstore.com/products/gsi-creos-gray-fine-point-gundam-marker",
-      "image_url": "https://cdn.shopify.com/s/files/1/0727/8355/products/greyp_600x600.jpg?v=1762272578",
+      "condition": "Open Box/Used",
+      "url": "https://www.ebay.com/itm/168612318395?_skw=gundam&hash=item274213ccbb:g:IucAAeSwv8xqfh2l",
+      "image_url": "https://i.ebayimg.com/images/g/IucAAeSwv8xqfh2l/s-l225.jpg",
       "category": "gundam",
-      "query": "gundam"
+      "query": "gundam",
+      "product_type": "cards"
     },
     "zoid": {
       "site": "eBay",
@@ -26,7 +28,8 @@
       "url": "https://www.ebay.com/itm/297687131853?_skw=zoids&hash=item454f8926cd:g:ky0AAOSwlZdkACMO",
       "image_url": "https://i.ebayimg.com/images/g/ky0AAOSwlZdkACMO/s-l225.jpg",
       "category": "zoid",
-      "query": "zoids"
+      "query": "zoids",
+      "product_type": "model_kit"
     }
   }
 }
