@@ -333,18 +333,20 @@ SITE_DEFS = {
 }
 
 # ---------------------------------------------------------------------------
-# Non-kit filter. eBay's category restriction (above) keeps its results to
-# actual model kits, but the HTML-scraped retail sites have no equivalent
-# category API — a plain "gundam"/"zoids" search on them can still surface
-# trading cards, plush, keychains, apparel, and similar merch alongside
-# actual kits. This is a best-effort keyword blacklist applied to every
-# site's results, not a guarantee — tune the list below if you spot either
-# false positives (a real kit getting filtered out) or false negatives
-# (junk still getting through).
+# Product-type classification. Nothing gets dropped anymore — every result
+# is tagged with a product_type ("model_kit", "cards", or "other") so the
+# app can offer a category filter (Model Kits / Cards / Other) instead of
+# silently discarding non-kit listings. This is a best-effort keyword
+# classifier, not a guarantee — tune the lists below if you spot either
+# false positives (a real kit landing in the wrong bucket) or false
+# negatives (something obviously a card or piece of merch landing in
+# Model Kits).
 # ---------------------------------------------------------------------------
-NON_KIT_KEYWORDS = [
+CARD_KEYWORDS = [
     "trading card", "tcg", "ccg", "card game", "playing card", "carddass",
-    "card set", "booster pack", "booster box",
+    "card set", "booster pack", "booster box", "trading figure",
+]
+OTHER_PRODUCT_KEYWORDS = [
     "sticker", "stickers", "decal sheet",
     "keychain", "key chain", "keyring", "key ring", "lanyard",
     "acrylic stand", "acrylic keychain", "nendoroid",
@@ -360,11 +362,15 @@ NON_KIT_KEYWORDS = [
 ]
 
 
-def is_probably_kit(title):
+def classify_product_type(title):
     if not title:
-        return True  # don't drop items we can't evaluate
+        return "other"
     t = title.lower()
-    return not any(kw in t for kw in NON_KIT_KEYWORDS)
+    if any(kw in t for kw in CARD_KEYWORDS):
+        return "cards"
+    if any(kw in t for kw in OTHER_PRODUCT_KEYWORDS):
+        return "other"
+    return "model_kit"
 
 
 def polite_sleep(lo=2.5, hi=5.5):
@@ -622,32 +628,35 @@ def scrape_ebay_catalog(query, cfg, max_results):
         log.warning(f"    [ebay] auth failed: {e}")
         return []
 
-    # Restrict to eBay's "Models & Kits" category (under Toys & Hobbies) so
-    # results are actual model kits rather than trading cards, plush,
-    # keychains, etc. that also turn up on a plain "gundam"/"zoids" text
-    # search. Category ID confirmed against eBay's own category browse
-    # URLs (https://www.ebay.com/b/Toy-Models-Kits/1188/...) — override via
-    # config.json's "category_id" under "ebay" if this ever changes or if
-    # you want a different category.
-    category_id = cfg.get("category_id", "1188")
+    # eBay's "Models & Kits" category (1188, under Toys & Hobbies) can be
+    # used to restrict results to just kits — but that also excludes
+    # trading cards entirely, and the app now wants to show Cards as its
+    # own browsable category rather than hide it. So no category
+    # restriction by default; results get classified into model_kit /
+    # cards / other the same way every other site's results do. Set
+    # config.json's "category_id" under "ebay" (e.g. back to "1188") if
+    # you'd rather eBay only ever return kits.
+    category_id = cfg.get("category_id")
 
     results = []
     offset = 0
     page_size = 50
     while offset < max_results:
         try:
+            params = {
+                "q": query,
+                "limit": min(page_size, max_results - offset),
+                "offset": offset,
+            }
+            if category_id:
+                params["category_ids"] = category_id
             resp = requests.get(
                 "https://api.ebay.com/buy/browse/v1/item_summary/search",
                 headers={
                     "Authorization": f"Bearer {token}",
                     "X-EBAY-C-MARKETPLACE-ID": cfg.get("marketplace", "EBAY_US"),
                 },
-                params={
-                    "q": query,
-                    "category_ids": category_id,
-                    "limit": min(page_size, max_results - offset),
-                    "offset": offset,
-                },
+                params=params,
                 timeout=15,
             )
             resp.raise_for_status()
@@ -745,13 +754,12 @@ def run():
             except Exception as e:
                 log.error(f"     unexpected error scraping ebay, skipping it: {e}")
                 results = []
-            kept = [r for r in results if is_probably_kit(r.get("title"))]
-            dropped = len(results) - len(kept)
-            log.info(f"     {len(kept)} result(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
-            for r in kept:
+            log.info(f"     {len(results)} result(s)")
+            for r in results:
                 r["category"] = category
                 r["query"] = query
-            all_results.extend(kept)
+                r["product_type"] = classify_product_type(r.get("title"))
+            all_results.extend(results)
             polite_sleep()
 
         mercari_cfg = cfg.get("mercari", {})
@@ -783,13 +791,12 @@ def run():
             except Exception as e:
                 log.error(f"     unexpected error scraping {site_key}, skipping it: {e}")
                 results = []
-            kept = [r for r in results if is_probably_kit(r.get("title"))]
-            dropped = len(results) - len(kept)
-            log.info(f"     {len(kept)} result(s) across up to {max_pages} page(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
-            for r in kept:
+            log.info(f"     {len(results)} result(s) across up to {max_pages} page(s)")
+            for r in results:
                 r["category"] = category
                 r["query"] = query
-            all_results.extend(kept)
+                r["product_type"] = classify_product_type(r.get("title"))
+            all_results.extend(results)
             polite_sleep()
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -798,7 +805,7 @@ def run():
     csv_path = os.path.join(OUTPUT_DIR, f"prices_{date_str}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["category", "site", "site_type", "title", "price", "shipping", "pickup", "currency", "condition", "url", "image_url"]
+            f, fieldnames=["category", "product_type", "site", "site_type", "title", "price", "shipping", "pickup", "currency", "condition", "url", "image_url"]
         )
         writer.writeheader()
         for r in all_results:
@@ -823,6 +830,13 @@ def run():
     log.info(f"Wrote summary to {summary_path}")
 
     log.info(f"Total listings this run: {len(all_results)}")
+    type_counts = {}
+    for r in all_results:
+        pt = r.get("product_type", "other")
+        type_counts[pt] = type_counts.get(pt, 0) + 1
+    if type_counts:
+        breakdown = ", ".join(f"{v} {k}" for k, v in sorted(type_counts.items(), key=lambda kv: -kv[1]))
+        log.info(f"  by product type: {breakdown}")
     if cheapest:
         for cat, r in cheapest.items():
             log.info(f"  cheapest {cat}: {r['price']} {r.get('currency','')} at {r['site']} — {r.get('title','')}")

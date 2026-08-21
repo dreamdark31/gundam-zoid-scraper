@@ -32,7 +32,7 @@ body{
   padding:32px 20px 80px;
 }
 
-.wrap{max-width:920px;margin:0 auto;}
+.wrap{max-width:1080px;margin:0 auto;}
 
 /* Header */
 .header{
@@ -347,6 +347,7 @@ input[type=search]{min-width:180px;}
   color:var(--ink-soft);
   margin:-4px 0 8px;
 }
+.price-breakdown-free{color:var(--green);font-weight:700;}
 .step .ship-note{color:var(--muted);}
 
 .mode-tabs{
@@ -402,6 +403,22 @@ input[type=search]{min-width:180px;}
   color:var(--ink-soft);
   display:flex;gap:8px;align-items:center;flex-wrap:wrap;
 }
+.browse-price-block{text-align:right;}
+.site-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.site-chip{
+  display:flex;gap:6px;align-items:center;
+  border:1px solid var(--line);
+  padding:3px 8px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--ink);
+  text-decoration:none;
+  background:var(--paper);
+}
+.site-chip:hover{border-color:var(--blue);}
+.site-chip-name{color:var(--ink-soft);}
+.site-chip-price{font-weight:700;color:var(--green);}
+.badge.multi-site{color:var(--blue);}
 .browse-price{
   font-family:'JetBrains Mono',monospace;
   font-weight:800;
@@ -417,6 +434,42 @@ input[type=search]{min-width:180px;}
 @media(max-width:480px){
   .header{flex-direction:column;align-items:flex-start;}
   .header .sub{text-align:left;}
+}
+
+.browse-layout{display:flex;gap:20px;align-items:flex-start;}
+.main-panel{flex:1;min-width:0;}
+.sidebar{
+  width:150px;flex-shrink:0;
+  display:flex;flex-direction:column;gap:2px;
+  border:1.5px solid var(--ink);
+  background:var(--paper-raised);
+  padding:10px;
+}
+.sidebar-title{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:.08em;
+  color:var(--muted);text-transform:uppercase;
+  margin-bottom:6px;
+}
+.sidebar-item{
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  padding:6px 8px;
+  background:none;border:none;
+  color:var(--ink-soft);
+  cursor:pointer;text-align:left;
+}
+.sidebar-item:hover{background:var(--paper);}
+.sidebar-item.active{background:var(--ink);color:var(--paper);font-weight:700;}
+.sidebar-item .count{color:var(--muted);font-size:11px;}
+.sidebar-item.active .count{color:var(--paper);opacity:.7;}
+.sidebar[hidden]{display:none;}
+
+@media(max-width:680px){
+  .browse-layout{flex-direction:column;}
+  .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px;}
+  .sidebar-title{width:100%;}
 }
 </style>
 </head>
@@ -437,30 +490,33 @@ input[type=search]{min-width:180px;}
     <button class="mode-tab" data-mode="mykits">MY KITS</button>
   </div>
 
-  <div class="toolbar">
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-filter="all">ALL</button>
-      <button class="tab" data-filter="gundam">GUNDAM</button>
-      <button class="tab" data-filter="zoid">ZOID</button>
-      <button class="tab" data-filter="other" id="otherTab">OTHER</button>
-    </div>
-    <input type="search" id="search" placeholder="Search…">
-    <select id="sort">
-      <option value="lowest">Sort: lowest price</option>
-      <option value="name">Sort: name A–Z</option>
-      <option value="recent" id="recentOption">Sort: recently updated</option>
-    </select>
-    <label class="ship-toggle">
-      <input type="checkbox" id="shipToggle"> Include shipping
-    </label>
-    <div class="spacer"></div>
-    <button class="btn secondary" id="refreshBtn">↻ REFRESH PRICES</button>
-    <button class="btn secondary" id="settingsBtn" title="Data source settings">⚙</button>
-    <button class="btn" id="addKitBtn">+ ADD KIT</button>
-  </div>
-  <div class="status-line" id="statusLine"></div>
+  <div class="browse-layout">
+    <div class="sidebar" id="productTypeSidebar"></div>
+    <div class="main-panel">
+      <div class="toolbar">
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-filter="all">ALL</button>
+          <button class="tab" data-filter="gundam">GUNDAM</button>
+          <button class="tab" data-filter="zoid">ZOID</button>
+          <button class="tab" data-filter="other" id="otherTab">OTHER</button>
+        </div>
+        <input type="search" id="search" placeholder="Search…">
+        <select id="sort">
+          <option value="price">Sort: price</option>
+          <option value="price_shipping">Sort: price + shipping</option>
+          <option value="name">Sort: name A–Z</option>
+          <option value="recent" id="recentOption">Sort: recently updated</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="refreshBtn">↻ REFRESH PRICES</button>
+        <button class="btn secondary" id="settingsBtn" title="Data source settings">⚙</button>
+        <button class="btn" id="addKitBtn">+ ADD KIT</button>
+      </div>
+      <div class="status-line" id="statusLine"></div>
 
-  <div id="content"></div>
+      <div id="content"></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -468,12 +524,16 @@ input[type=search]{min-width:180px;}
 <script>
 let catalog = [];
 let browseResults = [];
-let settings = { dataSourceUrl: '', lastRefreshedAt: null, includeShipping: false };
+let settings = { dataSourceUrl: '', lastRefreshedAt: null };
 let mode = 'browse-all';
 let filter = 'all';
-let sortMode = 'lowest';
+let productTypeFilter = 'all';
+let sortMode = 'price';
 let searchBox = '';
 let loaded = false;
+
+const PRODUCT_TYPE_LABELS = { model_kit: 'Model Kits', cards: 'Cards', other: 'Other' };
+function productTypeLabel(pt){ return PRODUCT_TYPE_LABELS[pt] || 'Other'; }
 
 const content = document.getElementById('content');
 const toastEl = document.getElementById('toast');
@@ -514,7 +574,6 @@ async function loadCatalog(){
   }catch(e){
     browseResults = [];
   }
-  document.getElementById('shipToggle').checked = !!settings.includeShipping;
   syncToolbarForMode();
   loaded = true;
   renderStatusLine();
@@ -555,19 +614,42 @@ function renderStatusLine(){
   }
 }
 
-function effectivePrice(p){
-  return settings.includeShipping ? p.price + (p.shipping || 0) : p.price;
+function rawPrice(p){
+  return p.price;
+}
+function totalPrice(p){
+  return p.price + (p.shipping || 0);
+}
+function sortValue(p){
+  return sortMode === 'price_shipping' ? totalPrice(p) : rawPrice(p);
 }
 
 function lowestEntry(item){
+  // "Lowest" always means the actual cheapest to buy (price + shipping,
+  // treating unknown shipping as 0) — this is the badge shown at the top
+  // of a kit's card, independent of how the overall list is sorted.
   if(!item.prices || item.prices.length===0) return null;
-  return item.prices.reduce((a,b)=> (effectivePrice(b) < effectivePrice(a) ? b : a));
+  return item.prices.reduce((a,b)=> (totalPrice(b) < totalPrice(a) ? b : a));
 }
 
 function mostRecentTimestamp(item){
   let t = item.createdAt || 0;
   (item.prices||[]).forEach(p=>{ if(p.addedAt > t) t = p.addedAt; });
   return t;
+}
+
+function shippingLineHtml(p){
+  if(p.shipping === 0){
+    return `<div class="price-breakdown price-breakdown-free">Free shipping</div>`;
+  }
+  if(typeof p.shipping === 'number'){
+    return `<div class="price-breakdown">+ $${p.shipping.toFixed(2)} shipping</div>`;
+  }
+  return '';
+}
+
+function pickupBadgeHtml(p){
+  return p.pickup ? `<div class="price-breakdown price-breakdown-free">Free local pickup</div>` : '';
 }
 
 function render(){
@@ -580,6 +662,7 @@ function render(){
 }
 
 function renderMyKits(){
+  renderProductTypeSidebar([]);
   let items = catalog.filter(i => filter==='all' || i.category===filter);
   if(searchBox.trim()){
     const s = searchBox.trim().toLowerCase();
@@ -588,12 +671,12 @@ function renderMyKits(){
   items = items.slice().sort((a,b)=>{
     if(sortMode==='name') return a.name.localeCompare(b.name);
     if(sortMode==='recent') return mostRecentTimestamp(b) - mostRecentTimestamp(a);
-    // lowest price, no-price items last
+    // sort by whichever price basis is selected; no-price items last
     const la = lowestEntry(a), lb = lowestEntry(b);
     if(!la && !lb) return a.name.localeCompare(b.name);
     if(!la) return 1;
     if(!lb) return -1;
-    return effectivePrice(la) - effectivePrice(lb);
+    return sortValue(la) - sortValue(lb);
   });
 
   if(items.length===0){
@@ -621,29 +704,130 @@ function renderMyKits(){
   });
 }
 
-function browseEffectivePrice(r){
-  return settings.includeShipping ? r.price + (r.shipping || 0) : r.price;
+function normalizeTitleTokens(title){
+  return new Set(
+    (title||'').toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 1)
+  );
+}
+function titleSimilarity(aTokens, bTokens){
+  if(!aTokens.size || !bTokens.size) return 0;
+  let inter = 0;
+  aTokens.forEach(t => { if(bTokens.has(t)) inter++; });
+  return inter / Math.min(aTokens.size, bTokens.size);
+}
+
+// Groups listings that are almost certainly the same physical product.
+// Two-stage: exact URL match first (catches the same listing turning up
+// twice, e.g. matching both category queries), then a title-similarity
+// pass within the same category to catch the same product across
+// different sites, which have no shared ID to match on. This is a
+// best-effort heuristic — it can occasionally merge two different but
+// similarly-named kits, or miss a real match if two stores phrase a
+// title very differently. Skipped above a size cap to keep the browser
+// responsive; that cap is rarely hit once category/search filters have
+// already narrowed things down.
+const GROUP_SIMILARITY_THRESHOLD = 0.72;
+const GROUP_FUZZY_MATCH_CAP = 600;
+
+function groupBrowseItems(items){
+  const groups = [];
+  const byUrl = new Map();
+  items.forEach(r=>{
+    const key = r.url || null;
+    if(key && byUrl.has(key)){
+      byUrl.get(key).entries.push(r);
+    } else {
+      const g = { entries: [r] };
+      if(key) byUrl.set(key, g);
+      groups.push(g);
+    }
+  });
+
+  if(groups.length > GROUP_FUZZY_MATCH_CAP) return groups;
+
+  const tokenCache = new Map();
+  function tokensFor(g){
+    if(!tokenCache.has(g)) tokenCache.set(g, normalizeTitleTokens(g.entries[0].title));
+    return tokenCache.get(g);
+  }
+  const merged = [];
+  const used = new Set();
+  for(let i=0;i<groups.length;i++){
+    if(used.has(i)) continue;
+    const gi = groups[i];
+    for(let j=i+1;j<groups.length;j++){
+      if(used.has(j)) continue;
+      const gj = groups[j];
+      if((gi.entries[0].category||'') !== (gj.entries[0].category||'')) continue;
+      const giSites = new Set(gi.entries.map(e=>e.site));
+      if(gj.entries.some(e=>giSites.has(e.site))) continue; // don't merge two different listings from the same site
+      if(titleSimilarity(tokensFor(gi), tokensFor(gj)) >= GROUP_SIMILARITY_THRESHOLD){
+        gi.entries.push(...gj.entries);
+        used.add(j);
+      }
+    }
+    merged.push(gi);
+  }
+  return merged;
+}
+
+function renderProductTypeSidebar(baseItems){
+  const sidebar = document.getElementById('productTypeSidebar');
+  if(mode === 'mykits'){
+    sidebar.hidden = true;
+    return;
+  }
+  sidebar.hidden = false;
+  const counts = {};
+  baseItems.forEach(r=>{
+    const pt = r.product_type || 'other';
+    counts[pt] = (counts[pt]||0) + 1;
+  });
+  const preferredOrder = ['model_kit', 'cards', 'other'];
+  const types = preferredOrder.filter(t => counts[t])
+    .concat(Object.keys(counts).filter(t => !preferredOrder.includes(t)));
+
+  let html = `<div class="sidebar-title">Category</div>`;
+  html += `<button class="sidebar-item ${productTypeFilter==='all'?'active':''}" data-pt="all">All <span class="count">${baseItems.length}</span></button>`;
+  types.forEach(pt=>{
+    html += `<button class="sidebar-item ${productTypeFilter===pt?'active':''}" data-pt="${pt}">${productTypeLabel(pt)} <span class="count">${counts[pt]}</span></button>`;
+  });
+  sidebar.innerHTML = html;
+  sidebar.querySelectorAll('.sidebar-item').forEach(btn=>{
+    btn.onclick = ()=>{ productTypeFilter = btn.dataset.pt; render(); };
+  });
 }
 
 function renderBrowseAll(){
   if(!settings.dataSourceUrl){
     content.innerHTML = `<div class="empty"><b>No data source connected</b>Set one in ⚙ settings to browse everything the scraper's found.</div>`;
+    renderProductTypeSidebar([]);
     return;
   }
   const sourceType = mode === 'browse-retailer' ? 'retailer' : mode === 'browse-reseller' ? 'marketplace' : 'all';
-  let items = browseResults.filter(r => typeof r.price === 'number');
-  items = items.filter(r => filter==='all' || r.category===filter);
-  items = items.filter(r => sourceType==='all' || (r.site_type||'retailer')===sourceType);
+  let base = browseResults.filter(r => typeof r.price === 'number');
+  base = base.filter(r => filter==='all' || r.category===filter);
+  base = base.filter(r => sourceType==='all' || (r.site_type||'retailer')===sourceType);
   if(searchBox.trim()){
     const s = searchBox.trim().toLowerCase();
-    items = items.filter(r => (r.title||'').toLowerCase().includes(s));
+    base = base.filter(r => (r.title||'').toLowerCase().includes(s));
   }
-  items = items.slice().sort((a,b)=>{
-    if(sortMode==='name') return (a.title||'').localeCompare(b.title||'');
-    return browseEffectivePrice(a) - browseEffectivePrice(b);
+
+  renderProductTypeSidebar(base);
+
+  let items = base.filter(r => productTypeFilter==='all' || (r.product_type||'other')===productTypeFilter);
+
+  const groups = groupBrowseItems(items);
+  groups.forEach(g => g.entries.sort((a,b)=> totalPrice(a)-totalPrice(b)));
+  groups.sort((a,b)=>{
+    if(sortMode==='name') return (a.entries[0].title||'').localeCompare(b.entries[0].title||'');
+    return sortValue(a.entries[0]) - sortValue(b.entries[0]);
   });
 
-  if(items.length===0){
+  if(groups.length===0){
     const emptyReason = browseResults.length===0
       ? 'Hit Refresh Prices, or wait for the next auto-refresh.'
       : (sourceType!=='all' ? `No ${sourceType === 'retailer' ? 'retailer' : 'reseller'} listings match this filter or search.` : 'Nothing matches this filter or search.');
@@ -651,35 +835,45 @@ function renderBrowseAll(){
     return;
   }
 
-  content.innerHTML = `<div class="browse-list">${items.map(browseRowHtml).join('')}</div>`;
+  content.innerHTML = `<div class="browse-list">${groups.map(groupRowHtml).join('')}</div>`;
 
-  items.forEach((r, idx)=>{
+  groups.forEach((g, idx)=>{
     const btn = content.querySelector(`.track-btn[data-idx="${idx}"]`);
-    if(btn) btn.onclick = ()=> trackListing(r);
+    if(btn) btn.onclick = ()=> trackListing(g.entries[0]);
   });
 }
 
-function browseRowHtml(r, idx){
-  const thumb = r.image_url
-    ? `<img class="browse-thumb" src="${escapeAttr(r.image_url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'browse-thumb-placeholder'}))">`
+function groupRowHtml(g, idx){
+  const cheapest = g.entries[0]; // entries pre-sorted cheapest-first
+  const thumb = cheapest.image_url
+    ? `<img class="browse-thumb" src="${escapeAttr(cheapest.image_url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'browse-thumb-placeholder'}))">`
     : `<div class="browse-thumb-placeholder"></div>`;
+  const siteChips = g.entries.map(e => `
+      <a class="site-chip" href="${escapeAttr(e.url||'#')}" target="_blank" rel="noopener">
+        <span class="site-chip-name">${escapeHtml(e.site||'')}</span>
+        <span class="site-chip-price">$${e.price.toFixed(2)}</span>
+      </a>`).join('');
   return `
   <div class="browse-row">
     <div class="browse-row-main-group">
       ${thumb}
       <div class="browse-main">
-        <div class="browse-title">${escapeHtml(r.title||'Untitled listing')}</div>
+        <div class="browse-title">${escapeHtml(cheapest.title||'Untitled listing')}</div>
         <div class="browse-meta">
-          <span class="badge ${r.category||'other'}">${r.category||'other'}</span>
-          <span class="badge source-${r.site_type||'retailer'}">${r.site_type||'retailer'}</span>
-          <span>${escapeHtml(r.site||'')}</span>
-          ${r.condition ? `<span>· ${escapeHtml(r.condition)}</span>` : ''}
-          ${r.url ? `<a href="${escapeAttr(r.url)}" target="_blank" rel="noopener">view ↗</a>` : ''}
+          <span class="badge ${cheapest.category||'other'}">${cheapest.category||'other'}</span>
+          <span class="badge source-${cheapest.site_type||'retailer'}">${cheapest.site_type||'retailer'}</span>
+          ${g.entries.length>1 ? `<span class="badge multi-site">${g.entries.length} sites</span>` : ''}
+          ${cheapest.condition ? `<span>· ${escapeHtml(cheapest.condition)}</span>` : ''}
         </div>
+        <div class="site-chips">${siteChips}</div>
       </div>
     </div>
     <div class="browse-actions">
-      <div class="browse-price">$${browseEffectivePrice(r).toFixed(2)}</div>
+      <div class="browse-price-block">
+        <div class="browse-price">$${cheapest.price.toFixed(2)}</div>
+        ${shippingLineHtml(cheapest)}
+        ${pickupBadgeHtml(cheapest)}
+      </div>
       <button class="btn small track-btn" data-idx="${idx}">+ TRACK</button>
     </div>
   </div>`;
@@ -700,6 +894,7 @@ async function trackListing(r){
       id: uid(),
       price: r.price,
       shipping: (typeof r.shipping === 'number') ? r.shipping : null,
+      pickup: !!r.pickup,
       seller: r.site || '',
       condition: r.condition || '',
       url: r.url || '',
@@ -728,7 +923,7 @@ function fmtDate(ts){
 
 function cardHtml(item){
   const low = lowestEntry(item);
-  const sorted = (item.prices||[]).slice().sort((a,b)=>effectivePrice(a)-effectivePrice(b));
+  const sorted = (item.prices||[]).slice().sort((a,b)=>totalPrice(a)-totalPrice(b));
   const historyOpen = openHistoryIds.has(item.id);
   return `
   <div class="card">
@@ -748,8 +943,9 @@ function cardHtml(item){
     ${item.notes ? `<div class="kit-notes">${escapeHtml(item.notes)}</div>` : ''}
     ${item.matchTerm ? `<div class="match-term">match term: "${escapeHtml(item.matchTerm)}"</div>` : ''}
     ${low
-      ? `<div class="price-row"><span class="lowest-price">$${effectivePrice(low).toFixed(2)}</span><span class="lowest-tag">LOWEST</span></div>
-         ${settings.includeShipping && low.shipping ? `<div class="price-breakdown">$${low.price.toFixed(2)} + $${low.shipping.toFixed(2)} shipping</div>` : ''}
+      ? `<div class="price-row"><span class="lowest-price">$${low.price.toFixed(2)}</span><span class="lowest-tag">LOWEST</span></div>
+         ${shippingLineHtml(low)}
+         ${pickupBadgeHtml(low)}
          <div class="lowest-seller">${escapeHtml(low.seller)}${low.condition ? ' · '+escapeHtml(low.condition) : ''}${low.url ? ` — <a href="${escapeAttr(low.url)}" target="_blank" rel="noopener">view listing ↗</a>` : ''}</div>`
       : `<div class="no-price">No prices logged yet</div>`
     }
@@ -761,9 +957,12 @@ function cardHtml(item){
     <div class="steps">
       ${sorted.map((p,idx)=>`
         <div class="step ${idx===0?'lowest':''}">
-          <span><span class="price">$${effectivePrice(p).toFixed(2)}</span>${settings.includeShipping && p.shipping ? `<span class="ship-note"> ($${p.price.toFixed(2)}+$${p.shipping.toFixed(2)} ship)</span>` : ''} — ${escapeHtml(p.seller)} <span class="meta">· ${fmtDate(p.addedAt)}${p.condition ? ' · '+escapeHtml(p.condition):''}</span></span>
           <span>
-            ${settings.includeShipping && !p.shipping ? `<button class="del set-ship" data-id="${p.id}">+ship</button>` : ''}
+            <span class="price">$${p.price.toFixed(2)}</span>${typeof p.shipping === 'number' ? `<span class="ship-note"> ${p.shipping===0 ? '(free ship)' : `(+$${p.shipping.toFixed(2)} ship)`}</span>` : ''}${p.pickup ? `<span class="ship-note"> (free pickup)</span>` : ''}
+            — ${escapeHtml(p.seller)} <span class="meta">· ${fmtDate(p.addedAt)}${p.condition ? ' · '+escapeHtml(p.condition):''}</span>
+          </span>
+          <span>
+            ${typeof p.shipping !== 'number' ? `<button class="del set-ship" data-id="${p.id}">+ship</button>` : ''}
             <button class="del" data-id="${p.id}">remove</button>
           </span>
         </div>`).join('')}
@@ -853,11 +1052,6 @@ document.getElementById('sort').addEventListener('change', e=>{
   sortMode = e.target.value;
   render();
 });
-document.getElementById('shipToggle').addEventListener('change', async e=>{
-  settings.includeShipping = e.target.checked;
-  render();
-  await saveSettings();
-});
 
 // Add kit modal
 document.getElementById('addKitBtn').addEventListener('click', ()=> openKitModal());
@@ -943,6 +1137,7 @@ function openPriceModal(itemId){
         <div class="field"><label>Seller / Site</label><input type="text" id="p-seller" placeholder="Amazon, HLJ, eBay…"></div>
       </div>
       <div class="field"><label>Listing URL (optional)</label><input type="text" id="p-url" placeholder="https://…"></div>
+      <label class="ship-toggle"><input type="checkbox" id="p-pickup"> Free local pickup</label>
       <div class="modal-actions">
         <button class="btn secondary" id="cancelPrice">Cancel</button>
         <button class="btn" id="savePrice">Save Price</button>
@@ -966,6 +1161,7 @@ function openPriceModal(itemId){
       id: uid(),
       price: priceVal,
       shipping: shippingVal,
+      pickup: document.getElementById('p-pickup').checked,
       seller,
       condition: document.getElementById('p-cond').value,
       url,
@@ -1076,6 +1272,7 @@ async function refreshPrices(opts){
           id: uid(),
           price: r.price,
           shipping: (typeof r.shipping === 'number') ? r.shipping : null,
+          pickup: !!r.pickup,
           seller: r.site,
           condition: r.condition || '',
           url: r.url || '',
