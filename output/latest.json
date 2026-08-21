@@ -1,19 +1,21 @@
 {
-  "generated_at": "2026-08-20T22:46:52.999657+00:00",
+  "generated_at": "2026-08-21T15:01:27.759576+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
-      "title": "Sazabi (GD05-049) - Freedom Ascension (GD05) (NM) LR",
-      "price": 1.25,
+      "site_type": "marketplace",
+      "title": "HG 1/144 Gundam Model Kit Parts #02 - Replacement Spare Kitbashing - USA Seller",
+      "price": 4.3,
       "shipping": null,
       "currency": "USD",
-      "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/227481867512?_skw=gundam&hash=item34f6f9d4f8:g:yEYAAeSw7F9qhRJ~",
+      "condition": "New",
+      "url": "https://www.ebay.com/itm/117251015640?_skw=gundam&hash=item1b4cb483d8:g:lLQAAeSwWatqgUFw",
       "category": "gundam",
       "query": "gundam"
     },
     "zoid": {
       "site": "eBay",
+      "site_type": "marketplace",
       "title": "Kotobukiya D-Style ZOIDS Blade Liger special limited -Gold plated parts include",
       "price": 6.5,
       "shipping": 39.0,
