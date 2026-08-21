@@ -186,7 +186,6 @@ input[type=search]{min-width:180px;}
 .badge.other{color:var(--muted);}
 .badge.source-marketplace{color:var(--rust);}
 .badge.source-retailer{color:var(--ink-soft);}
-#sourceTypeFilter{display:none;}
 
 .kit-name{font-size:16px;font-weight:700;margin:0 0 2px;}
 .kit-grade{font-size:12px;color:var(--ink-soft);margin-bottom:2px;}
@@ -432,7 +431,9 @@ input[type=search]{min-width:180px;}
   </div>
 
   <div class="mode-tabs" id="modeTabs">
-    <button class="mode-tab active" data-mode="browse">BROWSE ALL</button>
+    <button class="mode-tab active" data-mode="browse-all">BROWSE ALL</button>
+    <button class="mode-tab" data-mode="browse-retailer">RETAILERS</button>
+    <button class="mode-tab" data-mode="browse-reseller">RESELLERS</button>
     <button class="mode-tab" data-mode="mykits">MY KITS</button>
   </div>
 
@@ -444,11 +445,6 @@ input[type=search]{min-width:180px;}
       <button class="tab" data-filter="other" id="otherTab">OTHER</button>
     </div>
     <input type="search" id="search" placeholder="Search…">
-    <select id="sourceTypeFilter">
-      <option value="all">Source: all</option>
-      <option value="retailer">Source: retailers</option>
-      <option value="marketplace">Source: marketplaces</option>
-    </select>
     <select id="sort">
       <option value="lowest">Sort: lowest price</option>
       <option value="name">Sort: name A–Z</option>
@@ -473,9 +469,8 @@ input[type=search]{min-width:180px;}
 let catalog = [];
 let browseResults = [];
 let settings = { dataSourceUrl: '', lastRefreshedAt: null, includeShipping: false };
-let mode = 'browse';
+let mode = 'browse-all';
 let filter = 'all';
-let sourceTypeFilter = 'all';
 let sortMode = 'lowest';
 let searchBox = '';
 let loaded = false;
@@ -577,10 +572,10 @@ function mostRecentTimestamp(item){
 
 function render(){
   if(!loaded) return;
-  if(mode === 'browse'){
-    renderBrowseAll();
-  } else {
+  if(mode === 'mykits'){
     renderMyKits();
+  } else {
+    renderBrowseAll();
   }
 }
 
@@ -635,9 +630,10 @@ function renderBrowseAll(){
     content.innerHTML = `<div class="empty"><b>No data source connected</b>Set one in ⚙ settings to browse everything the scraper's found.</div>`;
     return;
   }
+  const sourceType = mode === 'browse-retailer' ? 'retailer' : mode === 'browse-reseller' ? 'marketplace' : 'all';
   let items = browseResults.filter(r => typeof r.price === 'number');
   items = items.filter(r => filter==='all' || r.category===filter);
-  items = items.filter(r => sourceTypeFilter==='all' || (r.site_type||'retailer')===sourceTypeFilter);
+  items = items.filter(r => sourceType==='all' || (r.site_type||'retailer')===sourceType);
   if(searchBox.trim()){
     const s = searchBox.trim().toLowerCase();
     items = items.filter(r => (r.title||'').toLowerCase().includes(s));
@@ -648,7 +644,10 @@ function renderBrowseAll(){
   });
 
   if(items.length===0){
-    content.innerHTML = `<div class="empty"><b>Nothing here yet</b>${browseResults.length===0 ? 'Hit Refresh Prices, or wait for the next auto-refresh.' : 'Nothing matches this filter or search.'}</div>`;
+    const emptyReason = browseResults.length===0
+      ? 'Hit Refresh Prices, or wait for the next auto-refresh.'
+      : (sourceType!=='all' ? `No ${sourceType === 'retailer' ? 'retailer' : 'reseller'} listings match this filter or search.` : 'Nothing matches this filter or search.');
+    content.innerHTML = `<div class="empty"><b>Nothing here yet</b>${emptyReason}</div>`;
     return;
   }
 
@@ -822,12 +821,10 @@ function syncToolbarForMode(){
   const otherTab = document.getElementById('otherTab');
   const recentOption = document.getElementById('recentOption');
   const searchInput = document.getElementById('search');
-  const sourceTypeSelect = document.getElementById('sourceTypeFilter');
-  if(mode === 'browse'){
+  if(mode !== 'mykits'){
     addKitBtn.style.display = 'none';
     otherTab.style.display = 'none';
     recentOption.style.display = 'none';
-    sourceTypeSelect.style.display = '';
     if(sortMode === 'recent'){ sortMode = 'lowest'; document.getElementById('sort').value = 'lowest'; }
     searchInput.placeholder = 'Search all listings…';
     if(filter === 'other'){ filter = 'all'; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.filter==='all')); }
@@ -835,7 +832,6 @@ function syncToolbarForMode(){
     addKitBtn.style.display = '';
     otherTab.style.display = '';
     recentOption.style.display = '';
-    sourceTypeSelect.style.display = 'none';
     searchInput.placeholder = 'Search kits…';
   }
 }
@@ -855,10 +851,6 @@ document.getElementById('search').addEventListener('input', e=>{
 });
 document.getElementById('sort').addEventListener('change', e=>{
   sortMode = e.target.value;
-  render();
-});
-document.getElementById('sourceTypeFilter').addEventListener('change', e=>{
-  sourceTypeFilter = e.target.value;
   render();
 });
 document.getElementById('shipToggle').addEventListener('change', async e=>{

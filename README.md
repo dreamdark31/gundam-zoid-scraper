@@ -291,3 +291,57 @@ theme like most of the others, it uses a custom `<product-card>` web
 component, and the real domain is `kotobukiya-us.com` (the earlier guess,
 `kotobukiya-shop.com`, was wrong). Its `SITE_DEFS` entry fully overrides
 the shared defaults rather than relying on them.
+
+## Correction: config.json needs to stay in the repo
+
+Earlier guidance in this project said to `.gitignore` and delete
+`config.json` entirely for security. That was too broad — GitHub Actions
+needs *some* `config.json` present in the checked-out repo to know which
+categories and sites to scrape (`categories`, `max_pages_per_site`, each
+site's `enabled` flag). None of that is secret. Only the `ebay.app_id` /
+`ebay.cert_id` fields were ever the actual risk, and those get silently
+overridden by the `EBAY_APP_ID` / `EBAY_CERT_ID` GitHub Secrets at
+runtime regardless of what's written in the committed file.
+
+**The correct setup**: commit `config.json` with everything real *except*
+dummy placeholder values in the ebay block:
+
+```json
+{
+  "categories": { "gundam": "gundam", "zoid": "zoids" },
+  "max_pages_per_site": 3,
+  "ebay": {
+    "enabled": true,
+    "app_id": "SET_VIA_GITHUB_SECRET",
+    "cert_id": "SET_VIA_GITHUB_SECRET",
+    "marketplace": "EBAY_US"
+  },
+  "mercari": { "enabled": false },
+  "amazon": { "enabled": false },
+  "bbts": { "enabled": true },
+  "mandarake": { "enabled": true },
+  "plazajapan": { "enabled": true },
+  "gundamplanet": { "enabled": true },
+  "hlj_com": { "enabled": true },
+  "gundamplacestore": { "enabled": true },
+  "otakumode": { "enabled": true },
+  "1999": { "enabled": true },
+  "imageanime": { "enabled": false },
+  "usagundamstore": { "enabled": true },
+  "gundamit": { "enabled": true },
+  "gundammodelcenter": { "enabled": true },
+  "gundamcentralshop": { "enabled": true },
+  "kotobukiya": { "enabled": true }
+}
+```
+
+Note `hobbylinkjapan` is gone from this list — it's been removed from
+`scraper.py` entirely, since that domain no longer resolves (HobbyLink
+Japan operates under `hlj.com` now, same company). And `imageanime` is
+set to `false` — see the note in `SITE_DEFS` for why.
+
+Locally, you can keep using this same file with real eBay keys filled in
+if you'd rather not deal with environment variables for local test runs —
+just don't let *that* version get committed. The `.gitignore` only
+protects you if git wasn't already tracking the file; if you're
+recommitting a fresh `config.json` now, that's fine and expected.

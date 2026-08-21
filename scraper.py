@@ -65,7 +65,24 @@ HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    )
+    ),
+    # A more complete, browser-like header set — this is a best-effort
+    # attempt to look less like a bot to sites behind Cloudflare or
+    # similar protection (BigBadToyStore, Otaku Mode, 1999.co.jp all
+    # returned 403 with the bare User-Agent alone). It is NOT guaranteed
+    # to work: real bot-detection systems also look at TLS/HTTP
+    # fingerprints that the `requests` library can't fully disguise as a
+    # real browser, so a 403 may persist for some sites no matter what
+    # headers are sent. If a site keeps 403ing after this change, that's
+    # the likely ceiling of what plain HTTP requests can do against it.
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
 }
 
 logging.basicConfig(
@@ -143,16 +160,6 @@ def extract_image_url(card, selector, base_url):
 # guesses — see the module docstring.
 # ---------------------------------------------------------------------------
 SITE_DEFS = {
-    "hobbylinkjapan": {
-        "name": "HobbyLink Japan",
-        "site_type": "retailer",
-        "search_url": "https://www.hobbylinkjapan.com/search/?keywords={q}",
-        "base_url": "https://www.hobbylinkjapan.com",
-        "currency": "USD",
-        "item_selector": ".item-cell, .product-item, .item",
-        "title_selector": ".item-name, .product-name, a[title]",
-        "price_selector": ".item-price, .price",
-    },
     "bbts": {
         "name": "BigBadToyStore",
         "site_type": "retailer",
@@ -195,13 +202,26 @@ SITE_DEFS = {
     "hlj_com": {
         "name": "HLJ.com",
         "site_type": "retailer",
-        "search_url": "https://www.hlj.com/catalogsearch/result/?q={q}",
+        # URL and pagination param confirmed against a real search results
+        # page (https://www.hlj.com/search/?Word=gundam&Page=1) — the
+        # earlier Magento-style guess (catalogsearch/result, ?q=) was wrong,
+        # that's why this 404'd. Item/title/price selectors below are
+        # STILL unverified guesses — I could see product titles and images
+        # in the page's server-rendered content, but not clear price text
+        # in the same fetch, which raises the possibility price is loaded
+        # separately via JavaScript on this site rather than being in the
+        # initial HTML. If this comes back with titles but no prices (or
+        # 0 results) after the URL fix, that's the likely reason — send
+        # real product-tile HTML the same way as for other sites and,
+        # importantly, check with "View Page Source" (not just Inspect)
+        # whether a price number actually appears in the raw HTML at all.
+        "search_url": "https://www.hlj.com/search/?Word={q}",
         "base_url": "https://www.hlj.com",
         "currency": "USD",
         "item_selector": ".product-item, li.item",
         "title_selector": ".product-item-link, .product-name a",
         "price_selector": ".price",
-        "page_param": "p",
+        "page_param": "Page",
     },
     "gundamplacestore": {
         "name": "Gundam Place Store",
@@ -228,6 +248,15 @@ SITE_DEFS = {
         "price_selector": ".price, .itemPrice",
     },
     "imageanime": {
+        # Confirmed this is an old-style hand-built site (category pages
+        # like /gundam.html, /gunplasmodki.html, "Website Design by
+        # Yahoo!" in the footer) — not a modern storefront with a
+        # /search?q= endpoint like the guess assumed, which is why it
+        # 404'd. It has no obvious search URL to plug in here at all;
+        # scraping it would mean crawling its category pages instead of
+        # searching, which is a different approach than every other site
+        # in this file. Disabled until that's built — set enabled: true
+        # in config.json only once that exists.
         "name": "Image Anime",
         "site_type": "retailer",
         "search_url": "https://www.imageanime.com/search?q={q}",
