@@ -489,11 +489,22 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
             timeout=15,
         )
         resp.raise_for_status()
+        data = resp.json()
     except requests.RequestException as e:
         log.warning(f"    fetch failed for Searchspring ({site['name']}): {e}")
         return [], 0
+    except ValueError:
+        # resp.json() failed to parse — status was 2xx (raise_for_status
+        # didn't trip) but the body wasn't JSON. Usually means a bot-
+        # protection challenge page came back with a 200 instead of a
+        # normal error. Log the actual body so this is diagnosable from
+        # a single run instead of needing another round-trip.
+        log.warning(
+            f"    Searchspring ({site['name']}) returned non-JSON (status {resp.status_code}). "
+            f"First 200 chars: {resp.text[:200]!r}"
+        )
+        return [], 0
 
-    data = resp.json()
     items = data.get("results", [])
     total_pages = data.get("pagination", {}).get("totalPages", page)
     total_results = data.get("pagination", {}).get("totalResults")
@@ -608,7 +619,11 @@ def scrape_ebay_catalog(query, cfg, max_results):
             log.warning(f"    [ebay] request failed: {e}")
             break
 
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            log.warning(f"    [ebay] non-JSON response (status {resp.status_code}): {resp.text[:200]!r}")
+            break
         items = data.get("itemSummaries", [])
         if not items:
             break
@@ -681,7 +696,11 @@ def run():
         ebay_cfg = cfg.get("ebay", {})
         if ebay_cfg.get("enabled", False):
             log.info("  -> ebay")
-            results = scrape_ebay_catalog(query, ebay_cfg, max_ebay_results)
+            try:
+                results = scrape_ebay_catalog(query, ebay_cfg, max_ebay_results)
+            except Exception as e:
+                log.error(f"     unexpected error scraping ebay, skipping it: {e}")
+                results = []
             kept = [r for r in results if is_probably_kit(r.get("title"))]
             dropped = len(results) - len(kept)
             log.info(f"     {len(kept)} result(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
@@ -706,10 +725,20 @@ def run():
             if not site_cfg.get("enabled", False):
                 continue
             log.info(f"  -> {site_key}")
-            if SITE_DEFS[site_key].get("backend") == "searchspring":
-                results = scrape_searchspring_catalog(query, site_key, max_pages)
-            else:
-                results = scrape_generic_catalog(query, site_key, max_pages)
+            # A bug or an unexpected response shape in any one site's
+            # scraper must never be able to kill the whole run and lose
+            # every other site's (and every other category's) results
+            # collected so far — that's exactly what happened when an
+            # unguarded resp.json() call crashed the entire script. Every
+            # per-site call is now isolated like this.
+            try:
+                if SITE_DEFS[site_key].get("backend") == "searchspring":
+                    results = scrape_searchspring_catalog(query, site_key, max_pages)
+                else:
+                    results = scrape_generic_catalog(query, site_key, max_pages)
+            except Exception as e:
+                log.error(f"     unexpected error scraping {site_key}, skipping it: {e}")
+                results = []
             kept = [r for r in results if is_probably_kit(r.get("title"))]
             dropped = len(results) - len(kept)
             log.info(f"     {len(kept)} result(s) across up to {max_pages} page(s)" + (f"  ({dropped} filtered as non-kit)" if dropped else ""))
