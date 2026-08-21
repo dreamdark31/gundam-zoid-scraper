@@ -77,7 +77,19 @@ HEADERS = {
     # the likely ceiling of what plain HTTP requests can do against it.
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
+    # Deliberately NOT advertising "br" (Brotli) here. requests/urllib3 can
+    # only auto-decompress Brotli if the optional `brotli` or `brotlicffi`
+    # package is installed, which this project's requirements.txt doesn't
+    # include — with "br" advertised, any server that decides to send
+    # Brotli-compressed content back gets silently un-decoded into garbage
+    # bytes, which shows up as either a JSON parse failure (Searchspring)
+    # or BeautifulSoup finding 0 matching elements in what's actually
+    # gibberish rather than real HTML (the likely explanation for several
+    # sites that were returning "0 results, no error" — Cloudflare and
+    # Shopify's CDN both default to Brotli when a client says it's OK).
+    # gzip/deflate are natively supported with no extra dependency, so
+    # sticking to those avoids this failure mode entirely.
+    "Accept-Encoding": "gzip, deflate",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
     "Sec-Fetch-Dest": "document",
@@ -363,10 +375,27 @@ def get_soup(url):
     try:
         resp = requests.get(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
-        return BeautifulSoup(resp.text, "lxml")
     except requests.RequestException as e:
         log.warning(f"    fetch failed for {url}: {e}")
         return None
+
+    # Sanity check: a real HTML page is overwhelmingly printable text. If
+    # a meaningful chunk of the response isn't, something went wrong in
+    # decoding (undeclared/unsupported compression being the classic
+    # cause) and BeautifulSoup would otherwise just silently find 0
+    # matching elements in garbage, which looks identical to "selector is
+    # wrong" in the logs. Catching it here instead makes that distinction
+    # obvious without needing another round-trip to diagnose.
+    sample = resp.text[:500]
+    printable_ratio = sum(1 for c in sample if c.isprintable() or c.isspace()) / max(len(sample), 1)
+    if printable_ratio < 0.85:
+        log.warning(
+            f"    {url} response doesn't look like real text (encoding/decompression "
+            f"problem?) — {printable_ratio:.0%} printable in first 500 chars"
+        )
+        return None
+
+    return BeautifulSoup(resp.text, "lxml")
 
 
 def parse_price(text):
