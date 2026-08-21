@@ -1,0 +1,26 @@
+{
+  "categories": { "gundam": "gundam", "zoid": "zoids" },
+  "max_pages_per_site": 3,
+  "ebay": {
+    "enabled": true,
+    "app_id": "SET_VIA_GITHUB_SECRET",
+    "cert_id": "SET_VIA_GITHUB_SECRET",
+    "marketplace": "EBAY_US"
+  },
+  "mercari": { "enabled": false },
+  "amazon": { "enabled": false },
+  "bbts": { "enabled": true },
+  "mandarake": { "enabled": true },
+  "plazajapan": { "enabled": true },
+  "gundamplanet": { "enabled": true },
+  "hlj_com": { "enabled": true },
+  "gundamplacestore": { "enabled": true },
+  "otakumode": { "enabled": true },
+  "1999": { "enabled": true },
+  "imageanime": { "enabled": false },
+  "usagundamstore": { "enabled": true },
+  "gundamit": { "enabled": true },
+  "gundammodelcenter": { "enabled": true },
+  "gundamcentralshop": { "enabled": true },
+  "kotobukiya": { "enabled": true }
+}
