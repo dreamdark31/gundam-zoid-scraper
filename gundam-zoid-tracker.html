@@ -432,8 +432,8 @@ input[type=search]{min-width:180px;}
   </div>
 
   <div class="mode-tabs" id="modeTabs">
-    <button class="mode-tab active" data-mode="mykits">MY KITS</button>
-    <button class="mode-tab" data-mode="browse">BROWSE ALL</button>
+    <button class="mode-tab active" data-mode="browse">BROWSE ALL</button>
+    <button class="mode-tab" data-mode="mykits">MY KITS</button>
   </div>
 
   <div class="toolbar">
@@ -473,7 +473,7 @@ input[type=search]{min-width:180px;}
 let catalog = [];
 let browseResults = [];
 let settings = { dataSourceUrl: '', lastRefreshedAt: null, includeShipping: false };
-let mode = 'mykits';
+let mode = 'browse';
 let filter = 'all';
 let sourceTypeFilter = 'all';
 let sortMode = 'lowest';
@@ -484,10 +484,11 @@ const content = document.getElementById('content');
 const toastEl = document.getElementById('toast');
 const statusLine = document.getElementById('statusLine');
 
-function toast(msg){
+function toast(msg, durationMs){
   toastEl.textContent = msg;
   toastEl.classList.add('show');
-  setTimeout(()=>toastEl.classList.remove('show'), 1800);
+  clearTimeout(toastEl._hideTimer);
+  toastEl._hideTimer = setTimeout(()=>toastEl.classList.remove('show'), durationMs || 1800);
 }
 
 function uid(){
@@ -1045,7 +1046,13 @@ async function refreshPrices(opts){
   const originalLabel = btn.textContent;
   btn.textContent = 'REFRESHING…';
   try{
-    const resp = await fetch(settings.dataSourceUrl, { cache: 'no-store' });
+    // Cache-bust: raw.githubusercontent.com caches responses at its edge
+    // for a few minutes regardless of the browser's own cache settings, so
+    // a file that just changed (or just started existing) can serve a
+    // stale response — including a stale 404 — for a short window. Adding
+    // a changing query param forces a fresh lookup every time.
+    const bustedUrl = settings.dataSourceUrl + (settings.dataSourceUrl.includes('?') ? '&' : '?') + '_=' + Date.now();
+    const resp = await fetch(bustedUrl, { cache: 'no-store' });
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     const results = Array.isArray(data) ? data : (data.results || []);
@@ -1100,7 +1107,8 @@ async function refreshPrices(opts){
       toast(`Refreshed — ${browseResults.length} listings found`);
     }
   }catch(e){
-    if(!opts.silent) toast('Refresh failed — check the data source URL');
+    console.error('Refresh Prices failed:', e);
+    if(!opts.silent) toast('Refresh failed: ' + (e.message || e) + ' — see browser console (F12) for details', 6000);
   }finally{
     btn.dataset.loading = '';
     btn.disabled = false;
