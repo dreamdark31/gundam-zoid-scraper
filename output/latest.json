@@ -1,17 +1,16 @@
 {
-  "generated_at": "2026-08-21T22:18:18.692856+00:00",
+  "generated_at": "2026-08-21T22:30:57.366472+00:00",
   "cheapest_by_category": {
     "gundam": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "title": "HG 1/144 Gundam Model Kit Parts #02 - Replacement Spare Kitbashing - USA Seller",
-      "price": 4.3,
+      "site": "USA Gundam Store",
+      "site_type": "retailer",
+      "title": "GM02 Gray Fine Point Gundam Marker",
+      "price": 3.39,
       "shipping": null,
-      "pickup": true,
       "currency": "USD",
       "condition": "New",
-      "url": "https://www.ebay.com/itm/117251015640?_skw=gundam&hash=item1b4cb483d8:g:lLQAAeSwWatqgUFw",
-      "image_url": "https://i.ebayimg.com/images/g/lLQAAeSwWatqgUFw/s-l225.jpg",
+      "url": "https://www.usagundamstore.com/products/gsi-creos-gray-fine-point-gundam-marker",
+      "image_url": "https://cdn.shopify.com/s/files/1/0727/8355/products/greyp_600x600.jpg?v=1762272578",
       "category": "gundam",
       "query": "gundam"
     },
