@@ -300,11 +300,15 @@ SITE_DEFS = {
     },
     "kotobukiya": {
         "name": "Kotobukiya USA",
-        # Real domain, confirmed against actual product-card HTML — not a
-        # Shopify Dawn theme like most others here, it's a custom
-        # <product-card> web component, so every selector below is
-        # overridden rather than relying on the Shopify defaults.
-        "search_url": "https://kotobukiya-us.com/search?q={q}",
+        # Real domain and selectors confirmed via View Page Source against
+        # a real search results page (server-rendered, not JS — a genuine
+        # selector/URL issue, not the rendering issue USAGundamStore had).
+        # The URL below matches the exact confirmed-working search URL —
+        # a bare "?q=..." wasn't enough; this theme's search apparently
+        # needs the extra params too (options[prefix]=last,
+        # filter.p.product_type=) to return the same server-rendered
+        # results page a browser gets.
+        "search_url": "https://kotobukiya-us.com/search?options%5Bprefix%5D=last&q={q}&filter.p.product_type=",
         "base_url": "https://kotobukiya-us.com",
         "currency": "USD",
         "site_type": "retailer",
@@ -489,19 +493,22 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
             timeout=15,
         )
         resp.raise_for_status()
-        data = resp.json()
     except requests.RequestException as e:
         log.warning(f"    fetch failed for Searchspring ({site['name']}): {e}")
         return [], 0
+
+    # requests.exceptions.JSONDecodeError is (confusingly) ALSO a
+    # RequestException in current requests versions, so it would have
+    # been swallowed by the block above with a useless message — this is
+    # deliberately its own try/except, after the request itself already
+    # succeeded, so we always get the actual status code and body.
+    try:
+        data = resp.json()
     except ValueError:
-        # resp.json() failed to parse — status was 2xx (raise_for_status
-        # didn't trip) but the body wasn't JSON. Usually means a bot-
-        # protection challenge page came back with a 200 instead of a
-        # normal error. Log the actual body so this is diagnosable from
-        # a single run instead of needing another round-trip.
         log.warning(
-            f"    Searchspring ({site['name']}) returned non-JSON (status {resp.status_code}). "
-            f"First 200 chars: {resp.text[:200]!r}"
+            f"    Searchspring ({site['name']}) returned non-JSON — "
+            f"status {resp.status_code}, {len(resp.content)} bytes. "
+            f"First 200 chars of body: {resp.text[:200]!r}"
         )
         return [], 0
 
@@ -633,14 +640,22 @@ def scrape_ebay_catalog(query, cfg, max_results):
             for opt in it.get("shippingOptions", []):
                 cost = opt.get("shippingCost", {}).get("value")
                 if cost is not None:
-                    shipping = parse_price(cost)
+                    shipping = parse_price(cost)  # 0.0 here means confirmed free shipping
                     break
+            # eBay's Browse API documents a "pickupOptions" array on
+            # ItemSummary for listings that offer local/arranged pickup —
+            # I haven't been able to verify this against a live response
+            # (no network access here), so treat this as best-effort: if
+            # it turns out to always be empty/missing even for listings
+            # you know offer pickup, tell me and I'll adjust.
+            pickup = bool(it.get("pickupOptions"))
             results.append({
                 "site": "eBay",
                 "site_type": "marketplace",
                 "title": it.get("title"),
                 "price": parse_price(price.get("value")),
                 "shipping": shipping,
+                "pickup": pickup,
                 "currency": price.get("currency"),
                 "condition": it.get("condition"),
                 "url": it.get("itemWebUrl"),
@@ -754,7 +769,7 @@ def run():
     csv_path = os.path.join(OUTPUT_DIR, f"prices_{date_str}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["category", "site", "site_type", "title", "price", "shipping", "currency", "condition", "url", "image_url"]
+            f, fieldnames=["category", "site", "site_type", "title", "price", "shipping", "pickup", "currency", "condition", "url", "image_url"]
         )
         writer.writeheader()
         for r in all_results:
