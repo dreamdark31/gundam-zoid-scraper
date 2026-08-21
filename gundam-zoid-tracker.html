@@ -158,6 +158,14 @@ input[type=search]{min-width:180px;}
   padding-bottom:10px;
   margin-bottom:10px;
 }
+.card-thumb{
+  width:44px;height:44px;
+  object-fit:contain;
+  background:var(--paper);
+  border:1px solid var(--line);
+  flex-shrink:0;
+  margin-right:10px;
+}
 .partno{
   font-family:'JetBrains Mono',monospace;
   font-size:10px;
@@ -373,7 +381,21 @@ input[type=search]{min-width:180px;}
   gap:14px;
   flex-wrap:wrap;
 }
-.browse-main{flex:1;min-width:220px;}
+.browse-thumb{
+  width:52px;height:52px;
+  object-fit:contain;
+  background:var(--paper);
+  border:1px solid var(--line);
+  flex-shrink:0;
+}
+.browse-thumb-placeholder{
+  width:52px;height:52px;
+  background:var(--paper);
+  border:1px dashed var(--line);
+  flex-shrink:0;
+}
+.browse-row-main-group{display:flex;align-items:center;gap:12px;flex:1;min-width:220px;}
+.browse-main{flex:1;min-width:180px;}
 .browse-title{font-size:13px;font-weight:600;margin-bottom:2px;}
 .browse-meta{
   font-family:'JetBrains Mono',monospace;
@@ -638,16 +660,22 @@ function renderBrowseAll(){
 }
 
 function browseRowHtml(r, idx){
+  const thumb = r.image_url
+    ? `<img class="browse-thumb" src="${escapeAttr(r.image_url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'browse-thumb-placeholder'}))">`
+    : `<div class="browse-thumb-placeholder"></div>`;
   return `
   <div class="browse-row">
-    <div class="browse-main">
-      <div class="browse-title">${escapeHtml(r.title||'Untitled listing')}</div>
-      <div class="browse-meta">
-        <span class="badge ${r.category||'other'}">${r.category||'other'}</span>
-        <span class="badge source-${r.site_type||'retailer'}">${r.site_type||'retailer'}</span>
-        <span>${escapeHtml(r.site||'')}</span>
-        ${r.condition ? `<span>· ${escapeHtml(r.condition)}</span>` : ''}
-        ${r.url ? `<a href="${escapeAttr(r.url)}" target="_blank" rel="noopener">view ↗</a>` : ''}
+    <div class="browse-row-main-group">
+      ${thumb}
+      <div class="browse-main">
+        <div class="browse-title">${escapeHtml(r.title||'Untitled listing')}</div>
+        <div class="browse-meta">
+          <span class="badge ${r.category||'other'}">${r.category||'other'}</span>
+          <span class="badge source-${r.site_type||'retailer'}">${r.site_type||'retailer'}</span>
+          <span>${escapeHtml(r.site||'')}</span>
+          ${r.condition ? `<span>· ${escapeHtml(r.condition)}</span>` : ''}
+          ${r.url ? `<a href="${escapeAttr(r.url)}" target="_blank" rel="noopener">view ↗</a>` : ''}
+        </div>
       </div>
     </div>
     <div class="browse-actions">
@@ -666,6 +694,7 @@ async function trackListing(r){
     grade: '',
     matchTerm: '',
     notes: '',
+    imageUrl: r.image_url || '',
     createdAt: Date.now(),
     prices: [{
       id: uid(),
@@ -708,6 +737,7 @@ function cardHtml(item){
       <button class="delete-kit" data-id="${item.id}" title="Delete kit">✕</button>
     </div>
     <div class="card-top">
+      ${item.imageUrl ? `<img class="card-thumb" src="${escapeAttr(item.imageUrl)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
       <div>
         <div class="partno">NO. ${item.partNo}</div>
         <div class="kit-name">${escapeHtml(item.name)}</div>

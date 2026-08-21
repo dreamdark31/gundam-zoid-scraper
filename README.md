@@ -271,3 +271,23 @@ their titles. Two things narrow this down:
   If a real kit gets wrongly filtered (a title happens to contain one of
   the blacklisted words) or junk gets through, edit that list directly —
   it's a plain Python list, no other code needs to change.
+
+## Product images
+
+`latest_full.json` now includes an `image_url` per result where available
+— eBay provides one directly via its API; HTML-scraped sites get theirs
+from the product tile's `<img>` tag (each site's `image_selector` in
+`SITE_DEFS`, defaulting to a plain `img` if not overridden). Both the
+Browse All list and any kit you've Tracked into My Kits show this as a
+thumbnail. If a site's images don't show up, its `image_selector` likely
+needs the same kind of fix as title/price selectors — same process:
+inspect a real product tile, find the actual `<img>`, check whether the
+real URL lives in `src` or `data-src`.
+
+## Kotobukiya
+
+Corrected against real product HTML — turns out it's not a Shopify Dawn
+theme like most of the others, it uses a custom `<product-card>` web
+component, and the real domain is `kotobukiya-us.com` (the earlier guess,
+`kotobukiya-shop.com`, was wrong). Its `SITE_DEFS` entry fully overrides
+the shared defaults rather than relying on them.

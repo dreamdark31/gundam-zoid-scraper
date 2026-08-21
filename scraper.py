@@ -77,11 +77,62 @@ log = logging.getLogger("scraper")
 
 DEFAULT_SHOPIFY_SELECTORS = {
     "item_selector": ".product-card, .card-wrapper, .grid__item, .product-item",
-    "title_selector": ".card__heading a, .product-card__title, .product-item-meta__title, a.full-unstyled-link",
+    # A LIST, tried in order, not a single comma-joined string — comma
+    # selectors don't have priority, select_one() just returns whichever
+    # match appears first in the actual HTML. On a Dawn-theme card (real
+    # USAGundamStore HTML, confirmed) that's the empty image link, not the
+    # title, so each of these is tried as its own separate query until one
+    # returns non-empty text.
+    "title_selector": [
+        ".card-information__text a",
+        ".card__heading a",
+        ".product-card__title",
+        ".product-item-meta__title",
+        "a.full-unstyled-link",
+    ],
+    # Sale price is tried first (see scrape_generic_page) because Dawn-theme
+    # cards keep the crossed-out original price in the DOM even when an
+    # item is on sale, positioned before the actual sale price — a plain
+    # "first price element" selector would silently return the wrong,
+    # higher price for anything discounted.
+    "sale_price_selector": ".price-item--sale",
     "price_selector": ".price-item--regular, .price__current, .price, .money",
     "link_selector": "a[href]",
+    "image_selector": "img",
     "page_param": "page",
 }
+
+def select_first(card, selectors):
+    """Try each selector in order (a list — priority matters), or fall back
+    to a single select_one() call if given a plain comma-joined string."""
+    if isinstance(selectors, str):
+        return card.select_one(selectors)
+    for sel_str in selectors:
+        el = card.select_one(sel_str)
+        if el and el.get_text(strip=True):
+            return el
+    return None
+
+
+def extract_image_url(card, selector, base_url):
+    """Find a product thumbnail and return an absolute URL, or None. Tries
+    data-src before src (many sites keep the real image behind data-src for
+    lazy loading, with src holding a blank placeholder until JS runs — since
+    this scraper doesn't run JS, we want whichever attribute actually has
+    real content). Handles protocol-relative URLs (//cdn.example.com/...)
+    and root-relative ones (/images/...)."""
+    img = card.select_one(selector) if selector else None
+    if img is None:
+        return None
+    url = img.get("data-src") or img.get("src") or ""
+    url = url.strip()
+    if not url or url.startswith("data:"):  # blank/placeholder pixel
+        return None
+    if url.startswith("//"):
+        return "https:" + url
+    if url.startswith("/"):
+        return base_url + url
+    return url
 
 # ---------------------------------------------------------------------------
 # Site definitions for the generic HTML scraper. Each entry needs:
@@ -213,10 +264,19 @@ SITE_DEFS = {
     },
     "kotobukiya": {
         "name": "Kotobukiya USA",
-        "search_url": "https://www.kotobukiya-shop.com/search?q={q}",
-        "base_url": "https://www.kotobukiya-shop.com",
+        # Real domain, confirmed against actual product-card HTML — not a
+        # Shopify Dawn theme like most others here, it's a custom
+        # <product-card> web component, so every selector below is
+        # overridden rather than relying on the Shopify defaults.
+        "search_url": "https://kotobukiya-us.com/search?q={q}",
+        "base_url": "https://kotobukiya-us.com",
         "currency": "USD",
         "site_type": "retailer",
+        "item_selector": "product-card",
+        "title_selector": [".card__title a"],
+        "price_selector": ".price__current",
+        "link_selector": "a.card-link, a[href]",
+        "image_selector": "img",
     },
 }
 
@@ -299,8 +359,16 @@ def scrape_generic_page(query, site_key, page):
 
     results = []
     for card in soup.select(sel["item_selector"]):
-        title_el = card.select_one(sel["title_selector"])
-        price_el = card.select_one(sel["price_selector"])
+        title_el = select_first(card, sel["title_selector"])
+        # Prefer the sale price if the card has one (see comment on
+        # sale_price_selector above) — otherwise fall back to the regular
+        # price selector. This order matters: checking regular first would
+        # return the crossed-out original price on discounted items.
+        price_el = None
+        if sel.get("sale_price_selector"):
+            price_el = select_first(card, sel["sale_price_selector"])
+        if price_el is None:
+            price_el = select_first(card, sel["price_selector"])
         link_el = card.select_one(sel["link_selector"])
         if not title_el or not price_el:
             continue
@@ -310,6 +378,7 @@ def scrape_generic_page(query, site_key, page):
         href = link_el.get("href") if link_el else None
         if href and href.startswith("/"):
             href = site["base_url"] + href
+        image_url = extract_image_url(card, sel.get("image_selector"), site["base_url"])
         results.append({
             "site": site["name"],
             "site_type": site.get("site_type", "retailer"),
@@ -319,6 +388,7 @@ def scrape_generic_page(query, site_key, page):
             "currency": site.get("currency", "USD"),
             "condition": "New",
             "url": href,
+            "image_url": image_url,
         })
     return results
 
@@ -436,6 +506,7 @@ def scrape_ebay_catalog(query, cfg, max_results):
                 "currency": price.get("currency"),
                 "condition": it.get("condition"),
                 "url": it.get("itemWebUrl"),
+                "image_url": it.get("image", {}).get("imageUrl"),
             })
 
         offset += len(items)
@@ -528,7 +599,7 @@ def run():
     csv_path = os.path.join(OUTPUT_DIR, f"prices_{date_str}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["category", "site", "site_type", "title", "price", "shipping", "currency", "condition", "url"]
+            f, fieldnames=["category", "site", "site_type", "title", "price", "shipping", "currency", "condition", "url", "image_url"]
         )
         writer.writeheader()
         for r in all_results:
