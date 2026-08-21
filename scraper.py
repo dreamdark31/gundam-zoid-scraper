@@ -468,10 +468,17 @@ def scrape_generic_catalog(query, site_key, max_pages):
 
 def scrape_searchspring_page(query, site, page, results_per_page=48):
     site_id = site["searchspring_site_id"]
+    # Searchspring's API generally doesn't require an Origin/Referer to
+    # return results (it's designed for third-party checkout/AMP contexts
+    # too), but sending them anyway costs nothing and rules this out as a
+    # cause if results are still empty after this change.
+    ss_headers = dict(HEADERS)
+    ss_headers["Referer"] = site["base_url"] + "/"
+    ss_headers["Origin"] = site["base_url"]
     try:
         resp = requests.get(
             f"https://{site_id}.a.searchspring.io/api/search/search.json",
-            headers=HEADERS,
+            headers=ss_headers,
             params={
                 "siteId": site_id,
                 "q": query,
@@ -489,6 +496,12 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
     data = resp.json()
     items = data.get("results", [])
     total_pages = data.get("pagination", {}).get("totalPages", page)
+    total_results = data.get("pagination", {}).get("totalResults")
+    if not items:
+        log.warning(
+            f"    Searchspring ({site['name']}) page {page}: 0 items in response. "
+            f"pagination.totalResults={total_results!r}, top-level keys={list(data.keys())}"
+        )
 
     results = []
     for it in items:
