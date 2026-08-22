@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-08-22T01:54:35.425509+00:00",
+  "generated_at": "2026-08-22T13:58:37.617104+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
       "site_type": "marketplace",
-      "title": "Providence Gundam GD03-033 LR Foil",
-      "price": 1.25,
-      "shipping": 1.79,
+      "title": "Shining Finger U (GD05-120) - Freedom Ascension GD05 - Gundam TCG NM",
+      "price": 1.49,
+      "shipping": 0.0,
       "pickup": false,
       "currency": "USD",
       "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/307140049520?_skw=gundam&hash=item4782f93a70:g:VUAAAeSwuVhqiP7Z",
-      "image_url": "https://i.ebayimg.com/images/g/VUAAAeSwuVhqiP7Z/s-l225.jpg",
+      "url": "https://www.ebay.com/itm/398240301152?_skw=gundam&hash=item5cb8f8c060:g:RTAAAeSwINxqbrN2",
+      "image_url": "https://i.ebayimg.com/images/g/RTAAAeSwINxqbrN2/s-l225.jpg",
       "category": "gundam",
       "query": "gundam",
-      "product_type": "model_kit"
+      "product_type": "cards"
     },
     "zoid": {
       "site": "eBay",
