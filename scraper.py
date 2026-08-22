@@ -130,6 +130,18 @@ DEFAULT_SHOPIFY_SELECTORS = {
     "link_selector": "a[href]",
     "image_selector": "img",
     "page_param": "page",
+    # Best-effort sold-out detection. Shopify themes commonly render a
+    # "sold out"/"unavailable" badge or price block that's present in the
+    # HTML either way but hidden via the real HTML `hidden` attribute
+    # when the item IS in stock — so an element matching this selector
+    # WITHOUT a `hidden` attribute is being actively shown, meaning sold
+    # out. This is unverified against most sites here (only confirmed
+    # against Kotobukiya's markup, which showed exactly this pattern —
+    # see chat) and is applied is_in_stock_by_hidden_attr() below. If a
+    # site marks sold-out differently (e.g. a plain "Sold Out" badge with
+    # no hidden-attribute toggling), this won't catch it — send real HTML
+    # of one of its sold-out listings and I'll adjust.
+    "sold_out_selector": ".price__no-variant, .sold-out, .badge--sold-out, [data-sold-out]",
 }
 
 def select_first(card, selectors):
@@ -163,6 +175,34 @@ def extract_image_url(card, selector, base_url):
     if url.startswith("/"):
         return base_url + url
     return url
+
+
+def is_in_stock_generic(card, sold_out_selector):
+    """See the sold_out_selector comment in DEFAULT_SHOPIFY_SELECTORS —
+    True (in stock) unless a matching element is present AND lacks the
+    `hidden` attribute (meaning the theme is actively displaying it)."""
+    if not sold_out_selector:
+        return True
+    el = card.select_one(sold_out_selector)
+    if el is None:
+        return True
+    return el.has_attr("hidden")
+
+
+def is_in_stock(card, sel):
+    """Preferred check: some themes put an explicit stock flag directly on
+    the item container itself (Gundam Planet: data-soldout="true"/"false",
+    confirmed against real HTML) — trust that when configured via
+    "sold_out_data_attr", since it's unambiguous. Falls back to the
+    selector-based heuristic otherwise."""
+    data_attr = sel.get("sold_out_data_attr")
+    if data_attr:
+        val = (card.get(data_attr) or "").strip().lower()
+        if val in ("true", "1", "yes"):
+            return False
+        if val in ("false", "0", "no"):
+            return True
+    return is_in_stock_generic(card, sel.get("sold_out_selector"))
 
 # ---------------------------------------------------------------------------
 # Site definitions for the generic HTML scraper. Each entry needs:
@@ -219,6 +259,16 @@ SITE_DEFS = {
         "search_url": "https://www.gundamplanet.com/search?q={q}&type=product",
         "base_url": "https://www.gundamplanet.com",
         "currency": "USD",
+        "item_selector": "li.grid__item",
+        # Real title text lives in a hover-only tooltip
+        # (.preview-card-hovertext-title) — untruncated, unlike the
+        # visible .card-title-link which cuts off with "...". Both
+        # confirmed against real HTML; tooltip text tried first.
+        "title_selector": [".preview-card-hovertext-title", ".card-title-link"],
+        # Price selectors: the shared Shopify defaults already match this
+        # theme's real classes (price-item--sale / price-item--regular),
+        # confirmed against real HTML — no override needed here.
+        "sold_out_data_attr": "data-soldout",
     },
     "hlj_com": {
         "name": "HLJ.com",
@@ -515,7 +565,11 @@ def scrape_generic_page(query, site_key, page):
         return []
 
     results = []
+    skipped_sold_out = 0
     for card in soup.select(sel["item_selector"]):
+        if not is_in_stock(card, sel):
+            skipped_sold_out += 1
+            continue
         title_el = select_first(card, sel["title_selector"])
         # Prefer the sale price if the card has one (see comment on
         # sale_price_selector above) — otherwise fall back to the regular
@@ -547,6 +601,8 @@ def scrape_generic_page(query, site_key, page):
             "url": href,
             "image_url": image_url,
         })
+    if skipped_sold_out:
+        log.info(f"    {site['name']} page {page}: skipped {skipped_sold_out} sold-out item(s)")
     return results
 
 
@@ -639,9 +695,16 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
         )
 
     results = []
+    skipped_sold_out = 0
     for it in items:
         price = parse_price(it.get("price"))
         if price is None:
+            continue
+        # Searchspring's "ss_available" field is set by the store's own
+        # inventory feed — "0" (as a string) means out of stock. Skip
+        # these rather than listing something you can't actually buy.
+        if str(it.get("ss_available", "1")) == "0":
+            skipped_sold_out += 1
             continue
         url = it.get("url") or ""
         if url.startswith("/"):
@@ -670,6 +733,8 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
             "image_url": it.get("imageUrl"),
             "metadata_text": metadata_text,
         })
+    if skipped_sold_out:
+        log.info(f"    Searchspring ({site['name']}) page {page}: skipped {skipped_sold_out} sold-out item(s)")
     return results, total_pages
 
 
@@ -768,6 +833,14 @@ def scrape_ebay_catalog(query, cfg, max_results):
         if not items:
             break
         for it in items:
+            # eBay's ItemSummary can include "estimatedAvailabilities" with
+            # a status field — skip anything explicitly flagged out of
+            # stock. Like the pickup/categories fields above, this is
+            # best-effort (unverified against a live response), but
+            # matches eBay's documented Browse API shape.
+            avail = it.get("estimatedAvailabilities") or []
+            if avail and avail[0].get("estimatedAvailabilityStatus") == "OUT_OF_STOCK":
+                continue
             price = it.get("price", {})
             shipping = None
             for opt in it.get("shippingOptions", []):
