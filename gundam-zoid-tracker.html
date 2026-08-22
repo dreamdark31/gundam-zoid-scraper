@@ -461,6 +461,7 @@ input[type=search]{min-width:180px;}
 .site-chip:hover{border-color:var(--blue);}
 .site-chip-name{color:var(--ink-soft);}
 .site-chip-price{font-weight:700;color:var(--green);}
+.site-chip-intl{color:var(--rust);font-size:9px;text-transform:uppercase;}
 .badge.multi-site{color:var(--blue);}
 .browse-price{
   font-family:'JetBrains Mono',monospace;
@@ -578,12 +579,15 @@ let settings = { dataSourceUrl: DEFAULT_DATA_SOURCE_URL, lastRefreshedAt: null }
 let mode = 'browse-all';
 let filter = 'all';
 let productTypeFilter = 'all';
+let shipsFromFilter = 'all';
 let sortMode = 'price';
 let searchBox = '';
 let loaded = false;
 
 const PRODUCT_TYPE_LABELS = { model_kit: 'Model Kits', cards: 'Cards', other: 'Other' };
 function productTypeLabel(pt){ return PRODUCT_TYPE_LABELS[pt] || 'Other'; }
+const SHIPS_FROM_LABELS = { us: 'Ships from US', international: 'Ships internationally', unknown: 'Unknown origin' };
+function shipsFromLabel(sf){ return SHIPS_FROM_LABELS[sf] || 'Unknown origin'; }
 
 const content = document.getElementById('content');
 const toastEl = document.getElementById('toast');
@@ -881,9 +885,32 @@ function renderProductTypeSidebar(baseItems){
   types.forEach(pt=>{
     html += `<button class="sidebar-item ${productTypeFilter===pt?'active':''}" data-pt="${pt}">${productTypeLabel(pt)} <span class="count">${counts[pt]}</span></button>`;
   });
+
+  // Ships From counts reflect the current category selection, so they
+  // stay meaningful as you narrow down, but not the ships-from selection
+  // itself (so switching between US/international shows sibling counts).
+  const categoryFiltered = baseItems.filter(r => productTypeFilter==='all' || (r.product_type||'other')===productTypeFilter);
+  const shipCounts = {};
+  categoryFiltered.forEach(r=>{
+    const sf = r.ships_from || 'unknown';
+    shipCounts[sf] = (shipCounts[sf]||0) + 1;
+  });
+  const shipOrder = ['us', 'international', 'unknown'];
+  const shipTypes = shipOrder.filter(t => shipCounts[t])
+    .concat(Object.keys(shipCounts).filter(t => !shipOrder.includes(t)));
+
+  html += `<div class="sidebar-title" style="margin-top:16px;">Ships From</div>`;
+  html += `<button class="sidebar-item ${shipsFromFilter==='all'?'active':''}" data-sf="all">All <span class="count">${categoryFiltered.length}</span></button>`;
+  shipTypes.forEach(sf=>{
+    html += `<button class="sidebar-item ${shipsFromFilter===sf?'active':''}" data-sf="${sf}">${shipsFromLabel(sf)} <span class="count">${shipCounts[sf]}</span></button>`;
+  });
+
   sidebar.innerHTML = html;
-  sidebar.querySelectorAll('.sidebar-item').forEach(btn=>{
+  sidebar.querySelectorAll('[data-pt]').forEach(btn=>{
     btn.onclick = ()=>{ productTypeFilter = btn.dataset.pt; render(); };
+  });
+  sidebar.querySelectorAll('[data-sf]').forEach(btn=>{
+    btn.onclick = ()=>{ shipsFromFilter = btn.dataset.sf; render(); };
   });
 }
 
@@ -905,6 +932,7 @@ function renderBrowseAll(){
   renderProductTypeSidebar(base);
 
   let items = base.filter(r => productTypeFilter==='all' || (r.product_type||'other')===productTypeFilter);
+  items = items.filter(r => shipsFromFilter==='all' || (r.ships_from||'unknown')===shipsFromFilter);
 
   const groups = groupBrowseItems(items);
   groups.forEach(g => g.entries.sort((a,b)=> totalPrice(a)-totalPrice(b)));
@@ -936,7 +964,7 @@ function groupRowHtml(g, idx){
     : `<div class="browse-thumb-placeholder"></div>`;
   const siteChips = g.entries.map(e => `
       <a class="site-chip" href="${escapeAttr(e.url||'#')}" target="_blank" rel="noopener">
-        <span class="site-chip-name">${escapeHtml(e.site||'')}</span>
+        <span class="site-chip-name">${escapeHtml(e.site||'')}${e.ships_from==='international' ? ' <span class="site-chip-intl">intl</span>' : ''}</span>
         <span class="site-chip-price">$${e.price.toFixed(2)}</span>
       </a>`).join('');
   return `
@@ -1003,6 +1031,7 @@ function renderKeywordWatches(){
     const term = kw.term.toLowerCase();
     let matches = base.filter(r => (r.title||'').toLowerCase().includes(term));
     matches = matches.filter(r => productTypeFilter==='all' || (r.product_type||'other')===productTypeFilter);
+    matches = matches.filter(r => shipsFromFilter==='all' || (r.ships_from||'unknown')===shipsFromFilter);
     const groups = groupBrowseItems(matches);
     groups.forEach(g => g.entries.sort((a,b)=> totalPrice(a)-totalPrice(b)));
     groups.sort((a,b)=>{

@@ -193,8 +193,11 @@ def is_in_stock(card, sel):
     """Preferred check: some themes put an explicit stock flag directly on
     the item container itself (Gundam Planet: data-soldout="true"/"false",
     confirmed against real HTML) — trust that when configured via
-    "sold_out_data_attr", since it's unambiguous. Falls back to the
-    selector-based heuristic otherwise."""
+    "sold_out_data_attr", since it's unambiguous. Next preference: real
+    schema.org microdata (Plaza Japan: <meta itemprop="availability"
+    content="https://schema.org/InStock">, confirmed) via
+    "sold_out_availability_selector". Falls back to the selector-based
+    hidden-attribute heuristic otherwise."""
     data_attr = sel.get("sold_out_data_attr")
     if data_attr:
         val = (card.get(data_attr) or "").strip().lower()
@@ -202,6 +205,17 @@ def is_in_stock(card, sel):
             return False
         if val in ("false", "0", "no"):
             return True
+
+    avail_sel = sel.get("sold_out_availability_selector")
+    if avail_sel:
+        el = card.select_one(avail_sel)
+        if el is not None:
+            content = (el.get("content") or "").lower()
+            if "outofstock" in content:
+                return False
+            if "instock" in content:
+                return True
+
     return is_in_stock_generic(card, sel.get("sold_out_selector"))
 
 # ---------------------------------------------------------------------------
@@ -216,15 +230,18 @@ SITE_DEFS = {
     "bbts": {
         "name": "BigBadToyStore",
         "site_type": "retailer",
+        "ships_from": "us",
         # Real search URL confirmed via View Page Source, including
         # ProductType=307 which appears to be BBTS's own "Model Kits"
         # category filter — worth keeping since it should reduce
         # non-kit results the same way eBay's category restriction did.
+        # HideSoldOut flipped to true (was false, the opposite of what we
+        # want — that literally means "don't hide sold-out items").
         # NOTE: this site still returns 403 Forbidden even with a correct
         # URL — that's bot-protection blocking the request before it ever
         # reaches this URL logic, not a selector/URL problem. See chat
         # for details; this fix alone likely won't unblock it.
-        "search_url": "https://www.bigbadtoystore.com/Search?HideInStock=false&HidePreorder=false&HideSoldOut=false&HideWaitlist=false&InventoryStatus=i,p,so,w&PageSize=20&SortOrder=Relevance&SearchText={q}&ProductType=307",
+        "search_url": "https://www.bigbadtoystore.com/Search?HideInStock=false&HidePreorder=false&HideSoldOut=true&HideWaitlist=false&InventoryStatus=i,p,so,w&PageSize=20&SortOrder=Relevance&SearchText={q}&ProductType=307",
         "base_url": "https://www.bigbadtoystore.com",
         "currency": "USD",
         "item_selector": ".product-item, .search-result-item, .item-cell",
@@ -235,6 +252,7 @@ SITE_DEFS = {
     "mandarake": {
         "name": "Mandarake",
         "site_type": "marketplace",
+        "ships_from": "international",
         "search_url": "https://order.mandarake.co.jp/order/listPage/list?keyword={q}&lang=en",
         "base_url": "https://order.mandarake.co.jp",
         "currency": "JPY",
@@ -245,18 +263,37 @@ SITE_DEFS = {
     "plazajapan": {
         "name": "Plaza Japan",
         "site_type": "retailer",
+        "ships_from": "international",
         "search_url": "https://www.plazajapan.com/catalogsearch/result/?q={q}",
         "base_url": "https://www.plazajapan.com",
         "currency": "USD",
-        "item_selector": ".product-item, li.item",
-        "title_selector": ".product-item-link, .product-name a",
-        "price_selector": ".price",
+        # BigCommerce platform, not Shopify — confirmed via real HTML
+        # (cdn11.bigcommerce.com), which is why the Shopify-style defaults
+        # never matched anything here.
+        "item_selector": ".product-card-items-wrapper",
+        "title_selector": [".title.fs-product-title"],
+        # The visible, actually-charged price (without tax) — there's also
+        # a hidden `.price` div showing a pre-tax/list figure that's
+        # explicitly styled display:none, deliberately not used here.
+        "price_selector": "[data-product-price-without-tax]",
+        "link_selector": "a.fs-serp-product-title",
+        "image_selector": ".image-container img",
+        # Real schema.org availability microdata, confirmed against real
+        # HTML — far more reliable than guessing from CSS/hidden attrs.
+        "sold_out_availability_selector": "meta[itemprop='availability']",
         "page_param": "p",
     },
     "gundamplanet": {
         "name": "Gundam Planet",
         "site_type": "retailer",
-        "search_url": "https://www.gundamplanet.com/search?q={q}&type=product",
+        "ships_from": "us",
+        # &filter.v.soldout=1 excludes sold-out items — confirmed directly
+        # by toggling the site's own "Include sold-out items" checkbox and
+        # comparing URLs (its naming is counterintuitive: this param value
+        # means "only show the not-sold-out filter facet", not "include
+        # sold out"). Better than relying on our own detection since the
+        # site excludes them at the source.
+        "search_url": "https://www.gundamplanet.com/search?q={q}&options%5Bprefix%5D=last&filter.v.soldout=1",
         "base_url": "https://www.gundamplanet.com",
         "currency": "USD",
         "item_selector": "li.grid__item",
@@ -268,42 +305,56 @@ SITE_DEFS = {
         # Price selectors: the shared Shopify defaults already match this
         # theme's real classes (price-item--sale / price-item--regular),
         # confirmed against real HTML — no override needed here.
+        # sold_out_data_attr kept as a safety-net second check, in case
+        # the URL filter ever misses one — harmless if it never triggers.
         "sold_out_data_attr": "data-soldout",
     },
     "hlj_com": {
         "name": "HLJ.com",
         "site_type": "retailer",
-        # URL and pagination param confirmed against a real search results
-        # page (https://www.hlj.com/search/?Word=gundam&Page=1) — the
-        # earlier Magento-style guess (catalogsearch/result, ?q=) was wrong,
-        # that's why this 404'd. Item/title/price selectors below are
-        # STILL unverified guesses — I could see product titles and images
-        # in the page's server-rendered content, but not clear price text
-        # in the same fetch, which raises the possibility price is loaded
-        # separately via JavaScript on this site rather than being in the
-        # initial HTML. If this comes back with titles but no prices (or
-        # 0 results) after the URL fix, that's the likely reason — send
-        # real product-tile HTML the same way as for other sites and,
-        # importantly, check with "View Page Source" (not just Inspect)
-        # whether a price number actually appears in the raw HTML at all.
+        "ships_from": "international",
+        # URL and selectors now confirmed against real search-result HTML.
         "search_url": "https://www.hlj.com/search/?Word={q}",
         "base_url": "https://www.hlj.com",
         "currency": "USD",
-        "item_selector": ".product-item, li.item",
-        "title_selector": ".product-item-link, .product-name a",
-        "price_selector": ".price",
+        "item_selector": ".search-widget-block",
+        "title_selector": ["p.product-item-name a"],
+        # The bold, prominently-styled price — confirmed against real HTML,
+        # this is the actual charged price (there's a second, non-bold
+        # price span alongside it showing a higher figure, not used here —
+        # unconfirmed exactly what that second one represents, possibly an
+        # MSRP/list-price comparison; worth a closer look if numbers ever
+        # look off for this site).
+        "price_selector": ".bold.stock-left",
+        "link_selector": "p.product-item-name a",
+        "image_selector": ".item-img-wrapper img",
+        # No confirmed sold-out example for this site yet — if one turns
+        # up looking wrong, send its real HTML and I'll add detection.
         "page_param": "Page",
     },
     "gundamplacestore": {
         "name": "Gundam Place Store",
         "site_type": "retailer",
+        "ships_from": "international",  # UNCONFIRMED — verify and correct if wrong
+        # Uses Snize, a third-party Shopify search app — confirmed via
+        # real HTML (class names like "snize-price-list-price"). The
+        # price is split across two separate elements (dollars in one,
+        # cents in a <sup> tag) — price_selector points at their shared
+        # parent so get_text() naturally concatenates both into one
+        # parseable string, confirmed against real HTML.
         "search_url": "https://gundamplacestore.com/search?q={q}",
         "base_url": "https://gundamplacestore.com",
         "currency": "USD",
+        "item_selector": ".search-results-item",
+        "title_selector": [".product-slider-title a"],
+        "price_selector": ".price-top",
+        "link_selector": ".product-slider-title a",
+        "image_selector": ".search-page-grid-image",
     },
     "otakumode": {
         "name": "Otaku Mode",
         "site_type": "retailer",
+        "ships_from": "international",  # UNCONFIRMED — verify and correct if wrong
         "search_url": "https://otakumode.com/shop/search?q={q}",
         "base_url": "https://otakumode.com",
         "currency": "USD",
@@ -311,6 +362,7 @@ SITE_DEFS = {
     "1999": {
         "name": "1999.co.jp",
         "site_type": "retailer",
+        "ships_from": "international",
         "search_url": "https://www.1999.co.jp/eng/search?keyword={q}",
         "base_url": "https://www.1999.co.jp",
         "currency": "JPY",
@@ -330,6 +382,7 @@ SITE_DEFS = {
         # in config.json only once that exists.
         "name": "Image Anime",
         "site_type": "retailer",
+        "ships_from": "us",
         "search_url": "https://www.imageanime.com/search?q={q}",
         "base_url": "https://www.imageanime.com",
         "currency": "USD",
@@ -343,6 +396,7 @@ SITE_DEFS = {
         # confirmed against a real response.
         "name": "USA Gundam Store",
         "site_type": "retailer",
+        "ships_from": "us",
         "backend": "searchspring",
         "searchspring_site_id": "ckt36l",
         "base_url": "https://www.usagundamstore.com",
@@ -351,6 +405,7 @@ SITE_DEFS = {
     "gundamit": {
         "name": "GundamIT",
         "site_type": "retailer",
+        "ships_from": "us",  # UNCONFIRMED, and site currently 404s — skipped per your request
         "search_url": "https://gundamit.com/search?q={q}",
         "base_url": "https://gundamit.com",
         "currency": "USD",
@@ -358,6 +413,7 @@ SITE_DEFS = {
     "gundammodelcenter": {
         "name": "Gundam Model Center",
         "site_type": "retailer",
+        "ships_from": "us",  # UNCONFIRMED, and site currently 404s — skipped per your request
         "search_url": "https://www.gundammodelcenter.com/search?q={q}",
         "base_url": "https://www.gundammodelcenter.com",
         "currency": "USD",
@@ -365,6 +421,7 @@ SITE_DEFS = {
     "gundamcentralshop": {
         "name": "Gundam Central Shop",
         "site_type": "retailer",
+        "ships_from": "us",  # UNCONFIRMED — skipped per your request
         "search_url": "https://www.gundamcentralshop.com/search?q={q}",
         "base_url": "https://www.gundamcentralshop.com",
         "currency": "USD",
@@ -383,6 +440,7 @@ SITE_DEFS = {
         "base_url": "https://kotobukiya-us.com",
         "currency": "USD",
         "site_type": "retailer",
+        "ships_from": "us",
         "item_selector": "product-card",
         "title_selector": [".card__title a"],
         "price_selector": ".price__current",
@@ -593,6 +651,7 @@ def scrape_generic_page(query, site_key, page):
         results.append({
             "site": site["name"],
             "site_type": site.get("site_type", "retailer"),
+            "ships_from": site.get("ships_from", "unknown"),
             "title": title_el.get_text(strip=True),
             "price": price,
             "shipping": None,  # search-results pages almost never show this
@@ -724,6 +783,7 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
         results.append({
             "site": site["name"],
             "site_type": site.get("site_type", "retailer"),
+            "ships_from": site.get("ships_from", "unknown"),
             "title": it.get("name", ""),
             "price": price,
             "shipping": None,
@@ -862,9 +922,17 @@ def scrape_ebay_catalog(query, cfg, max_results):
             category_names = " ".join(
                 c.get("categoryName", "") for c in (it.get("categories") or [])
             )
+            # eBay listings genuinely vary seller-to-seller — unlike the
+            # other sites, this isn't a fixed site-level fact. Browse API's
+            # ItemSummary includes an "itemLocation.country" field for this
+            # (best-effort/unverified against a live response, same as the
+            # other eBay-specific fields above).
+            item_country = (it.get("itemLocation") or {}).get("country")
+            ships_from = "us" if item_country == "US" else ("international" if item_country else "unknown")
             results.append({
                 "site": "eBay",
                 "site_type": "marketplace",
+                "ships_from": ships_from,
                 "title": it.get("title"),
                 "price": parse_price(price.get("value")),
                 "shipping": shipping,
@@ -985,7 +1053,7 @@ def run():
     csv_path = os.path.join(OUTPUT_DIR, f"prices_{date_str}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["category", "product_type", "site", "site_type", "title", "price", "shipping", "pickup", "currency", "condition", "url", "image_url"]
+            f, fieldnames=["category", "product_type", "site", "site_type", "ships_from", "title", "price", "shipping", "pickup", "currency", "condition", "url", "image_url"]
         )
         writer.writeheader()
         for r in all_results:
