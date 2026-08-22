@@ -281,6 +281,49 @@ input[type=search]{min-width:180px;}
   margin:-4px 0 8px;
 }
 
+/* Keyword watches */
+.keyword-add-row{
+  display:flex;gap:8px;
+  margin-bottom:18px;
+}
+.keyword-add-row input{
+  flex:1;
+  padding:9px 10px;
+  border:1.5px solid var(--line);
+  font-family:'Inter',sans-serif;
+  font-size:13px;
+  background:var(--paper-raised);
+}
+.keyword-section{margin-bottom:22px;}
+.keyword-section-header{
+  display:flex;align-items:center;gap:10px;
+  border-bottom:2px solid var(--ink);
+  padding-bottom:6px;
+  margin-bottom:10px;
+}
+.keyword-term{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:800;
+  font-size:14px;
+}
+.keyword-count{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--muted);
+  flex:1;
+}
+.keyword-remove{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--rust);
+  background:none;border:none;cursor:pointer;
+}
+.keyword-empty{
+  font-size:13px;color:var(--muted);
+  border:1px dashed var(--line);
+  padding:14px;
+}
+
 /* Modal */
 .overlay{
   position:fixed;inset:0;background:rgba(27,42,65,.45);
@@ -487,6 +530,7 @@ input[type=search]{min-width:180px;}
     <button class="mode-tab active" data-mode="browse-all">BROWSE ALL</button>
     <button class="mode-tab" data-mode="browse-retailer">RETAILERS</button>
     <button class="mode-tab" data-mode="browse-reseller">RESELLERS</button>
+    <button class="mode-tab" data-mode="keywords">KEYWORDS</button>
     <button class="mode-tab" data-mode="mykits">MY KITS</button>
   </div>
 
@@ -524,7 +568,13 @@ input[type=search]{min-width:180px;}
 <script>
 let catalog = [];
 let browseResults = [];
-let settings = { dataSourceUrl: '', lastRefreshedAt: null };
+let keywordWatches = [];
+// Baked-in default data source — a public, non-secret URL, so it's safe
+// to ship in the file itself rather than requiring re-entry on every
+// device you open this on. Still fully editable via the ⚙ settings if
+// you ever point this at a different repo.
+const DEFAULT_DATA_SOURCE_URL = 'https://raw.githubusercontent.com/dreamdark31/gundam-zoid-scraper/refs/heads/main/output/latest_full.json';
+let settings = { dataSourceUrl: DEFAULT_DATA_SOURCE_URL, lastRefreshedAt: null };
 let mode = 'browse-all';
 let filter = 'all';
 let productTypeFilter = 'all';
@@ -555,6 +605,7 @@ function uid(){
 const LS_CATALOG = 'gundamZoidTracker.catalog';
 const LS_SETTINGS = 'gundamZoidTracker.settings';
 const LS_BROWSE = 'gundamZoidTracker.browseResults';
+const LS_KEYWORDS = 'gundamZoidTracker.keywordWatches';
 
 async function loadCatalog(){
   content.innerHTML = '<div class="empty">Loading catalog…</div>';
@@ -574,6 +625,12 @@ async function loadCatalog(){
   }catch(e){
     browseResults = [];
   }
+  try{
+    const raw = localStorage.getItem(LS_KEYWORDS);
+    keywordWatches = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    keywordWatches = [];
+  }
   syncToolbarForMode();
   loaded = true;
   renderStatusLine();
@@ -585,6 +642,33 @@ async function loadCatalog(){
   if(settings.dataSourceUrl){
     refreshPrices({ silent: true });
   }
+}
+
+async function saveKeywordWatches(){
+  try{
+    localStorage.setItem(LS_KEYWORDS, JSON.stringify(keywordWatches));
+  }catch(e){
+    toast('Save failed — your browser storage may be full or blocked');
+  }
+}
+
+async function addKeywordWatch(rawTerm){
+  const term = (rawTerm||'').trim();
+  if(!term){ toast('Enter a keyword first'); return; }
+  if(keywordWatches.some(k => k.term.toLowerCase() === term.toLowerCase())){
+    toast('Already tracking that keyword');
+    return;
+  }
+  keywordWatches.push({ id: uid(), term, addedAt: Date.now() });
+  await saveKeywordWatches();
+  render();
+  toast(`Tracking "${term}"`);
+}
+
+async function removeKeywordWatch(id){
+  keywordWatches = keywordWatches.filter(k => k.id !== id);
+  await saveKeywordWatches();
+  render();
 }
 
 async function saveCatalog(){
@@ -656,6 +740,8 @@ function render(){
   if(!loaded) return;
   if(mode === 'mykits'){
     renderMyKits();
+  } else if(mode === 'keywords'){
+    renderKeywordWatches();
   } else {
     renderBrowseAll();
   }
@@ -879,6 +965,90 @@ function groupRowHtml(g, idx){
   </div>`;
 }
 
+function renderKeywordWatches(){
+  let base = browseResults.filter(r => typeof r.price === 'number');
+  base = base.filter(r => filter==='all' || r.category===filter);
+
+  // Sidebar reflects the union of everything currently matching ANY
+  // tracked keyword, independent of the product-type filter itself.
+  const unionMatches = [];
+  const seenKeys = new Set();
+  keywordWatches.forEach(kw=>{
+    const term = kw.term.toLowerCase();
+    base.forEach(r=>{
+      if((r.title||'').toLowerCase().includes(term)){
+        const key = r.url || (r.site+r.title+r.price);
+        if(!seenKeys.has(key)){ seenKeys.add(key); unionMatches.push(r); }
+      }
+    });
+  });
+  renderProductTypeSidebar(unionMatches);
+
+  const addRowHtml = `
+    <div class="keyword-add-row">
+      <input type="text" id="kwAddInput" placeholder="Add a keyword to track (e.g. &quot;wing gundam&quot;)…">
+      <button class="btn small" id="kwAddBtn">+ TRACK KEYWORD</button>
+    </div>`;
+
+  if(keywordWatches.length === 0){
+    content.innerHTML = addRowHtml + `<div class="empty"><b>No keywords tracked yet</b>Add one above — every matching listing across all sites will show up here automatically as new scrapes come in.</div>`;
+    wireKeywordAddRow();
+    return;
+  }
+
+  let globalIdx = 0;
+  const allGroups = [];
+  let sectionsHtml = '';
+  keywordWatches.forEach(kw=>{
+    const term = kw.term.toLowerCase();
+    let matches = base.filter(r => (r.title||'').toLowerCase().includes(term));
+    matches = matches.filter(r => productTypeFilter==='all' || (r.product_type||'other')===productTypeFilter);
+    const groups = groupBrowseItems(matches);
+    groups.forEach(g => g.entries.sort((a,b)=> totalPrice(a)-totalPrice(b)));
+    groups.sort((a,b)=>{
+      if(sortMode==='name') return (a.entries[0].title||'').localeCompare(b.entries[0].title||'');
+      return sortValue(a.entries[0]) - sortValue(b.entries[0]);
+    });
+    const rowsHtml = groups.map(g=>{
+      const idx = globalIdx++;
+      allGroups.push(g);
+      return groupRowHtml(g, idx);
+    }).join('');
+    sectionsHtml += `
+      <div class="keyword-section">
+        <div class="keyword-section-header">
+          <span class="keyword-term">"${escapeHtml(kw.term)}"</span>
+          <span class="keyword-count">${groups.length} match${groups.length===1?'':'es'}</span>
+          <button class="keyword-remove" data-id="${kw.id}">✕ remove</button>
+        </div>
+        ${groups.length===0
+          ? `<div class="keyword-empty">No current matches — will pick up automatically once something matching this shows up in a future scrape.</div>`
+          : `<div class="browse-list">${rowsHtml}</div>`
+        }
+      </div>`;
+  });
+
+  content.innerHTML = addRowHtml + sectionsHtml;
+  wireKeywordAddRow();
+
+  content.querySelectorAll('.keyword-remove').forEach(btn=>{
+    btn.onclick = ()=> removeKeywordWatch(btn.dataset.id);
+  });
+  allGroups.forEach((g, idx)=>{
+    const btn = content.querySelector(`.track-btn[data-idx="${idx}"]`);
+    if(btn) btn.onclick = ()=> trackListing(g.entries[0]);
+  });
+}
+
+function wireKeywordAddRow(){
+  const input = document.getElementById('kwAddInput');
+  const btn = document.getElementById('kwAddBtn');
+  if(btn) btn.onclick = ()=>{ addKeywordWatch(input.value); input.value=''; };
+  if(input) input.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){ e.preventDefault(); addKeywordWatch(input.value); input.value=''; }
+  });
+}
+
 async function trackListing(r){
   const kit = {
     id: uid(),
@@ -1024,13 +1194,21 @@ function syncToolbarForMode(){
     addKitBtn.style.display = 'none';
     otherTab.style.display = 'none';
     recentOption.style.display = 'none';
-    if(sortMode === 'recent'){ sortMode = 'lowest'; document.getElementById('sort').value = 'lowest'; }
-    searchInput.placeholder = 'Search all listings…';
+    if(sortMode === 'recent'){ sortMode = 'price'; document.getElementById('sort').value = 'price'; }
+    if(mode === 'keywords'){
+      // Free-text search doesn't apply here — the in-content "add a
+      // keyword" row is how you filter this view.
+      searchInput.style.display = 'none';
+    } else {
+      searchInput.style.display = '';
+      searchInput.placeholder = 'Search all listings…';
+    }
     if(filter === 'other'){ filter = 'all'; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.filter==='all')); }
   } else {
     addKitBtn.style.display = '';
     otherTab.style.display = '';
     recentOption.style.display = '';
+    searchInput.style.display = '';
     searchInput.placeholder = 'Search kits…';
   }
 }

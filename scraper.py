@@ -371,14 +371,40 @@ OTHER_PRODUCT_KEYWORDS = [
     # Build supplies / tools — used alongside kits, not kits themselves.
     "marker", "markers", "paint marker", "paint pen",
     "paint", "spray paint", "lacquer", "acrylic paint", "primer",
+    "gundam color", "mr color", "mr. color", "mr hobby color", "aqueous color",
+    "gaia color", "tamiya color", "clear color", "color series",
     "cement", "glue", "adhesive", "putty",
     "topcoat", "top coat", "panel liner", "panel line accent",
     "nippers", "side cutter", "cutter", "tool set", "tweezers", "paintbrush", "airbrush",
     "display base", "display stand",
 ]
 
+# ---------------------------------------------------------------------------
+# Some sites hand us real merchant-assigned categorization alongside the
+# title — Shopify/Searchspring product data can include collection
+# handles and tags a shop owner set (e.g. a paint bottle filed under a
+# "paints" collection), and eBay's API can include category names. That's
+# real ground truth from the retailer, worth trusting over a title-only
+# keyword guess. classify_product_type takes that as an optional second
+# argument — a lowercase blob of any such metadata a scraper function
+# was able to pull out — and checks it first if there's a
+# hobby-supplies/cards signal so it's not solely dependent on the title.
+# ---------------------------------------------------------------------------
+CARD_SIGNAL_TAGS = ["card", "cards", "tcg", "ccg", "trading-card", "trading card"]
+OTHER_SIGNAL_TAGS = [
+    "paint", "paints", "tool", "tools", "cement", "glue", "adhesive",
+    "putty", "marker", "markers", "topcoat", "accessor", "apparel",
+    "sticker", "keychain", "plush", "poster", "stationery", "supplies",
+]
 
-def classify_product_type(title):
+
+def classify_product_type(title, metadata_text=""):
+    m = (metadata_text or "").lower()
+    if m:
+        if any(kw in m for kw in CARD_SIGNAL_TAGS):
+            return "cards"
+        if any(kw in m for kw in OTHER_SIGNAL_TAGS):
+            return "other"
     if not title:
         return "other"
     t = title.lower()
@@ -620,6 +646,18 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
         url = it.get("url") or ""
         if url.startswith("/"):
             url = site["base_url"] + url
+        # Real merchant categorization, not a guess — Shopify/Searchspring
+        # carries the collections and tags a store owner actually assigned
+        # this product to. A paint bottle filed under a "paints" collection
+        # gets classified correctly even if its title never says "paint".
+        metadata_bits = []
+        for key in ("collection_handle", "tags", "ss_tags"):
+            val = it.get(key)
+            if isinstance(val, list):
+                metadata_bits.extend(str(v) for v in val)
+            elif val:
+                metadata_bits.append(str(val))
+        metadata_text = " ".join(metadata_bits)
         results.append({
             "site": site["name"],
             "site_type": site.get("site_type", "retailer"),
@@ -630,6 +668,7 @@ def scrape_searchspring_page(query, site, page, results_per_page=48):
             "condition": "New",
             "url": url,
             "image_url": it.get("imageUrl"),
+            "metadata_text": metadata_text,
         })
     return results, total_pages
 
@@ -743,6 +782,13 @@ def scrape_ebay_catalog(query, cfg, max_results):
             # it turns out to always be empty/missing even for listings
             # you know offer pickup, tell me and I'll adjust.
             pickup = bool(it.get("pickupOptions"))
+            # eBay's ItemSummary can include a "categories" list — real
+            # category names eBay itself assigned the listing, when
+            # present. Best-effort like the pickup field above (haven't
+            # been able to verify the exact shape without live access).
+            category_names = " ".join(
+                c.get("categoryName", "") for c in (it.get("categories") or [])
+            )
             results.append({
                 "site": "eBay",
                 "site_type": "marketplace",
@@ -754,6 +800,7 @@ def scrape_ebay_catalog(query, cfg, max_results):
                 "condition": it.get("condition"),
                 "url": it.get("itemWebUrl"),
                 "image_url": it.get("image", {}).get("imageUrl"),
+                "metadata_text": category_names,
             })
 
         offset += len(items)
@@ -816,7 +863,7 @@ def run():
             for r in relevant:
                 r["category"] = category
                 r["query"] = query
-                r["product_type"] = classify_product_type(r.get("title"))
+                r["product_type"] = classify_product_type(r.get("title"), r.get("metadata_text", ""))
             all_results.extend(relevant)
             polite_sleep()
 
@@ -855,7 +902,7 @@ def run():
             for r in relevant:
                 r["category"] = category
                 r["query"] = query
-                r["product_type"] = classify_product_type(r.get("title"))
+                r["product_type"] = classify_product_type(r.get("title"), r.get("metadata_text", ""))
             all_results.extend(relevant)
             polite_sleep()
 
