@@ -49,6 +49,7 @@ import json
 import logging
 import os
 import random
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -175,7 +176,15 @@ SITE_DEFS = {
     "bbts": {
         "name": "BigBadToyStore",
         "site_type": "retailer",
-        "search_url": "https://www.bigbadtoystore.com/Search?SearchText={q}",
+        # Real search URL confirmed via View Page Source, including
+        # ProductType=307 which appears to be BBTS's own "Model Kits"
+        # category filter — worth keeping since it should reduce
+        # non-kit results the same way eBay's category restriction did.
+        # NOTE: this site still returns 403 Forbidden even with a correct
+        # URL — that's bot-protection blocking the request before it ever
+        # reaches this URL logic, not a selector/URL problem. See chat
+        # for details; this fix alone likely won't unblock it.
+        "search_url": "https://www.bigbadtoystore.com/Search?HideInStock=false&HidePreorder=false&HideSoldOut=false&HideWaitlist=false&InventoryStatus=i,p,so,w&PageSize=20&SortOrder=Relevance&SearchText={q}&ProductType=307",
         "base_url": "https://www.bigbadtoystore.com",
         "currency": "USD",
         "item_selector": ".product-item, .search-result-item, .item-cell",
@@ -378,6 +387,46 @@ def classify_product_type(title):
     if any(kw in t for kw in OTHER_PRODUCT_KEYWORDS):
         return "other"
     return "model_kit"
+
+
+# ---------------------------------------------------------------------------
+# Category relevance check. Retailer search engines do their own fuzzy/
+# typo-tolerant matching, and that occasionally returns something
+# completely unrelated — e.g. searching "zoids" on a site returned an
+# unrelated kit called "Zombinoid" purely because the words look similar
+# to that site's search algorithm. Rather than trust every site's search
+# results blindly, keep a result only if its title actually contains the
+# category's own keyword, OR matches a known model-code pattern for kits
+# that don't spell out the franchise name (e.g. Kotobukiya's Zoids kits
+# are often just named "Gun Sniper Leena..." with no literal "Zoids" in
+# the title, identifiable instead by codes like "RZ-041"). This is a
+# real accuracy trade-off: a genuinely relevant kit using neither the
+# keyword nor a known code pattern would get filtered out too. Extend
+# CATEGORY_CODE_PATTERNS below if you spot a real kit being wrongly
+# dropped — check the log's "dropped as off-category" counts.
+# ---------------------------------------------------------------------------
+CATEGORY_KEYWORDS = {
+    "gundam": ["gundam", "gunpla"],
+    "zoid": ["zoid", "zoids"],
+}
+CATEGORY_CODE_PATTERNS = {
+    "gundam": re.compile(r"\b(RX|MS|MSN|MSZ|GN|ZGMF|ORB|OZ|XXXG)[-\s]?\d", re.IGNORECASE),
+    "zoid": re.compile(r"\b(HMM|RZ|EZ|ZD|RHI|EHI|SLM)[-\s]?\d", re.IGNORECASE),
+}
+
+
+def is_relevant_to_category(title, category):
+    if not title:
+        return False
+    t = title.lower()
+    keywords = CATEGORY_KEYWORDS.get(category)
+    if keywords and any(kw in t for kw in keywords):
+        return True
+    pattern = CATEGORY_CODE_PATTERNS.get(category)
+    if pattern and pattern.search(title):
+        return True
+    # Unknown category (not gundam/zoid) — no filter defined, don't drop.
+    return category not in CATEGORY_KEYWORDS
 
 
 def polite_sleep(lo=2.5, hi=5.5):
@@ -761,12 +810,14 @@ def run():
             except Exception as e:
                 log.error(f"     unexpected error scraping ebay, skipping it: {e}")
                 results = []
-            log.info(f"     {len(results)} result(s)")
-            for r in results:
+            relevant = [r for r in results if is_relevant_to_category(r.get("title"), category)]
+            off_category = len(results) - len(relevant)
+            log.info(f"     {len(relevant)} result(s)" + (f"  ({off_category} dropped as off-category)" if off_category else ""))
+            for r in relevant:
                 r["category"] = category
                 r["query"] = query
                 r["product_type"] = classify_product_type(r.get("title"))
-            all_results.extend(results)
+            all_results.extend(relevant)
             polite_sleep()
 
         mercari_cfg = cfg.get("mercari", {})
@@ -798,12 +849,14 @@ def run():
             except Exception as e:
                 log.error(f"     unexpected error scraping {site_key}, skipping it: {e}")
                 results = []
-            log.info(f"     {len(results)} result(s) across up to {max_pages} page(s)")
-            for r in results:
+            relevant = [r for r in results if is_relevant_to_category(r.get("title"), category)]
+            off_category = len(results) - len(relevant)
+            log.info(f"     {len(relevant)} result(s) across up to {max_pages} page(s)" + (f"  ({off_category} dropped as off-category)" if off_category else ""))
+            for r in relevant:
                 r["category"] = category
                 r["query"] = query
                 r["product_type"] = classify_product_type(r.get("title"))
-            all_results.extend(results)
+            all_results.extend(relevant)
             polite_sleep()
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
