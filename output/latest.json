@@ -1,17 +1,18 @@
 {
-  "generated_at": "2026-08-22T20:03:47.441874+00:00",
+  "generated_at": "2026-08-22T20:43:29.004043+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
       "site_type": "marketplace",
-      "title": "Gundam Card Game GD04 Phantom Aria \"You Pick\" C & U Cards Up to 50% off *READ*",
-      "price": 1.19,
+      "ships_from": "us",
+      "title": "Shining Finger U (GD05-120) - Freedom Ascension GD05 - Gundam TCG NM",
+      "price": 1.49,
       "shipping": 0.0,
       "pickup": false,
       "currency": "USD",
       "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/278015355773?_skw=gundam&hash=item40bb01ab7d:g:qmIAAeSwpAlqeJbs",
-      "image_url": "https://i.ebayimg.com/images/g/qmIAAeSwpAlqeJbs/s-l225.jpg",
+      "url": "https://www.ebay.com/itm/398240301152?_skw=gundam&hash=item5cb8f8c060:g:RTAAAeSwINxqbrN2",
+      "image_url": "https://i.ebayimg.com/images/g/RTAAAeSwINxqbrN2/s-l225.jpg",
       "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
       "category": "gundam",
       "query": "gundam",
@@ -20,6 +21,7 @@
     "zoid": {
       "site": "eBay",
       "site_type": "marketplace",
+      "ships_from": "international",
       "title": "Kotobukiya D-Style ZOIDS Blade Liger special limited -Gold plated parts include",
       "price": 6.5,
       "shipping": 39.0,
