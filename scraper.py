@@ -264,26 +264,22 @@ SITE_DEFS = {
         "name": "Plaza Japan",
         "site_type": "retailer",
         "ships_from": "international",
-        # Real URL confirmed directly — the old Magento-style guess was
-        # simply wrong (this site is BigCommerce, not Magento).
-        "search_url": "https://www.plazajapan.com/search-results/?q={q}",
+        # Confirmed via View Page Source that the results container is
+        # completely empty in raw HTML — everything is rendered client-side
+        # by the Fast Simon search widget. Found the real API via Network
+        # tab (filtered to api.fastsimon.com specifically, since other
+        # fastsimon.com subdomains handle unrelated things like
+        # autocomplete/recommendations and flooded the filtered list at
+        # first). It's a plain GET, no session/auth needed — much simpler
+        # than HLJ's flow. Prices come back in JPY ("c":"JPY" in the real
+        # response), not USD, so scrape_plazajapan_page converts using a
+        # live rate (see jpy_to_usd) to stay consistent with every other
+        # site here reporting USD.
+        "backend": "fastsimon",
+        "uuid": "374593a3-f394-44fe-94db-5c69d31f0c86",
+        "store_id": 1,
         "base_url": "https://www.plazajapan.com",
         "currency": "USD",
-        # BigCommerce platform, not Shopify — confirmed via real HTML
-        # (cdn11.bigcommerce.com), which is why the Shopify-style defaults
-        # never matched anything here.
-        "item_selector": ".product-card-items-wrapper",
-        "title_selector": [".title.fs-product-title"],
-        # The visible, actually-charged price (without tax) — there's also
-        # a hidden `.price` div showing a pre-tax/list figure that's
-        # explicitly styled display:none, deliberately not used here.
-        "price_selector": "[data-product-price-without-tax]",
-        "link_selector": "a.fs-serp-product-title",
-        "image_selector": ".image-container img",
-        # Real schema.org availability microdata, confirmed against real
-        # HTML — far more reliable than guessing from CSS/hidden attrs.
-        "sold_out_availability_selector": "meta[itemprop='availability']",
-        "page_param": "p",
     },
     "gundamplanet": {
         "name": "Gundam Planet",
@@ -600,6 +596,139 @@ def parse_price(text):
         return float(cleaned)
     except ValueError:
         return None
+
+
+# ---------------------------------------------------------------------------
+# Plaza Japan (Fast Simon) — confirmed via a real captured response: a
+# single JSON object with an "items" list, JPY-denominated prices, and
+# per-item stock status buried inside a nested "vra" structure (Fast
+# Simon's variant-range-attributes format) rather than a simple top-level
+# field. Plain GET, no cookies/CSRF needed.
+# ---------------------------------------------------------------------------
+
+_JPY_TO_USD_RATE = None  # fetched once per run, cached here
+
+
+def get_jpy_to_usd_rate():
+    """Live JPY->USD rate with a safe fallback if the FX request fails, so
+    a network hiccup here can't take down the whole plazajapan scrape."""
+    fallback = 0.0067  # rough ballpark; only used if the live lookup fails
+    try:
+        resp = requests.get("https://open.er-api.com/v6/latest/JPY", timeout=10)
+        resp.raise_for_status()
+        rate = resp.json().get("rates", {}).get("USD")
+        if rate:
+            return float(rate)
+    except (requests.RequestException, ValueError) as e:
+        log.warning(f"    couldn't fetch a live JPY->USD rate, using fallback {fallback}: {e}")
+    return fallback
+
+
+def jpy_to_usd(jpy_amount):
+    global _JPY_TO_USD_RATE
+    if _JPY_TO_USD_RATE is None:
+        _JPY_TO_USD_RATE = get_jpy_to_usd_rate()
+        log.info(f"    using JPY->USD rate: {_JPY_TO_USD_RATE:.6f}")
+    return round(jpy_amount * _JPY_TO_USD_RATE, 2)
+
+
+def extract_fastsimon_sellable(item):
+    """Fast Simon nests stock status inside 'vra' as a list of
+    [id, [[key, [value]], ...]] pairs rather than a plain top-level field.
+    Defaults to in-stock (True) if the structure doesn't match what we've
+    confirmed, rather than silently dropping items on a parsing miss."""
+    vra = item.get("vra")
+    if not isinstance(vra, list):
+        return True
+    for entry in vra:
+        if not isinstance(entry, list) or len(entry) < 2:
+            continue
+        attrs = entry[1]
+        if not isinstance(attrs, list):
+            continue
+        for pair in attrs:
+            if isinstance(pair, list) and len(pair) == 2 and pair[0] == "Sellable":
+                vals = pair[1]
+                if isinstance(vals, list) and vals:
+                    return bool(vals[0])
+    return True
+
+
+def scrape_plazajapan_page(query, site, page):
+    params = {
+        "request_source": "v-next",
+        "src": "v-next",
+        "UUID": site["uuid"],
+        "uuid": site["uuid"],
+        "store_id": site.get("store_id", 1),
+        "cdn_cache_key": int(time.time()),
+        "api_type": "json",
+        "facets_required": 1,
+        "products_per_page": 60,
+        "narrow": "[]",
+        "q": query,
+        "page_num": page,
+        "sort_by": "relevency",
+        "qs": "false",
+    }
+    try:
+        resp = requests.get(
+            "https://api.fastsimon.com/full_text_search",
+            params=params, headers=HEADERS, timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as e:
+        log.warning(f"    fetch failed for plazajapan page {page}: {e}")
+        return [], 1
+    except ValueError:
+        log.warning(f"    plazajapan returned non-JSON — status {resp.status_code}")
+        return [], 1
+
+    items = data.get("items", [])
+    total_pages = data.get("total_p", 1)
+
+    results = []
+    skipped_sold_out = 0
+    for item in items:
+        if not extract_fastsimon_sellable(item):
+            skipped_sold_out += 1
+            continue
+        price_jpy = parse_price(item.get("p"))
+        if price_jpy is None:
+            continue
+        href = item.get("u")
+        if href and href.startswith("/"):
+            href = site["base_url"] + href
+        results.append({
+            "site": site["name"],
+            "site_type": site.get("site_type", "retailer"),
+            "title": (item.get("l") or "").strip(),
+            "price": jpy_to_usd(price_jpy),
+            "shipping": None,
+            "currency": "USD",
+            "condition": "New",
+            "url": href,
+            "image_url": item.get("t"),
+        })
+    if skipped_sold_out:
+        log.info(f"    {site['name']} page {page}: skipped {skipped_sold_out} sold-out item(s)")
+    return results, total_pages
+
+
+def scrape_plazajapan_catalog(query, site_key, max_pages):
+    site = SITE_DEFS[site_key]
+    all_results = []
+    for page in range(1, max_pages + 1):
+        page_results, total_pages = scrape_plazajapan_page(query, site, page)
+        if not page_results:
+            break
+        all_results.extend(page_results)
+        if page >= total_pages:
+            break
+        if page < max_pages:
+            polite_sleep()
+    return all_results
 
 
 def scrape_generic_page(query, site_key, page):
@@ -1163,6 +1292,8 @@ def run():
                     results = scrape_searchspring_catalog(query, site_key, max_pages)
                 elif backend == "hlj_liveprice":
                     results = scrape_hlj_catalog(query, site_key, max_pages)
+                elif backend == "fastsimon":
+                    results = scrape_plazajapan_catalog(query, site_key, max_pages)
                 else:
                     results = scrape_generic_catalog(query, site_key, max_pages)
             except Exception as e:
