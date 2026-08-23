@@ -1,22 +1,19 @@
 {
-  "generated_at": "2026-08-23T03:37:03.027174+00:00",
+  "generated_at": "2026-08-23T04:23:22.659999+00:00",
   "cheapest_by_category": {
     "gundam": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "Gundam Card Game GD04 Phantom Aria \"You Pick\" C & U Cards Up to 50% off *READ*",
-      "price": 1.19,
-      "shipping": 0.0,
-      "pickup": false,
+      "site": "Plaza Japan",
+      "site_type": "retailer",
+      "title": "1 JPY SUPER SALE Gundam Poteko Black Pepper Flavor SINGLE (AUGUST 3rd EXPIRY DATE)",
+      "price": 0.01,
+      "shipping": null,
       "currency": "USD",
-      "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/278015355773?_skw=gundam&hash=item40bb01ab7d:g:qmIAAeSwpAlqeJbs",
-      "image_url": "https://i.ebayimg.com/images/g/qmIAAeSwpAlqeJbs/s-l225.jpg",
-      "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
+      "condition": "New",
+      "url": "https://www.plazajapan.com/45496608857881",
+      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/216038/images/1006418/bandai-candy-1-jpy-super-sale-gundam-poteko-black-pepper-flavor-single-august-3rd-expiry-date__13015.1787034880.350.350.jpg?c=2",
       "category": "gundam",
       "query": "gundam",
-      "product_type": "cards"
+      "product_type": "model_kit"
     },
     "zoid": {
       "site": "HLJ.com",
