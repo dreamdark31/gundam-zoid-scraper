@@ -1,39 +1,36 @@
 {
-  "generated_at": "2026-08-22T20:43:29.004043+00:00",
+  "generated_at": "2026-08-23T03:37:03.027174+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
       "site_type": "marketplace",
       "ships_from": "us",
-      "title": "Shining Finger U (GD05-120) - Freedom Ascension GD05 - Gundam TCG NM",
-      "price": 1.49,
+      "title": "Gundam Card Game GD04 Phantom Aria \"You Pick\" C & U Cards Up to 50% off *READ*",
+      "price": 1.19,
       "shipping": 0.0,
       "pickup": false,
       "currency": "USD",
       "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/398240301152?_skw=gundam&hash=item5cb8f8c060:g:RTAAAeSwINxqbrN2",
-      "image_url": "https://i.ebayimg.com/images/g/RTAAAeSwINxqbrN2/s-l225.jpg",
+      "url": "https://www.ebay.com/itm/278015355773?_skw=gundam&hash=item40bb01ab7d:g:qmIAAeSwpAlqeJbs",
+      "image_url": "https://i.ebayimg.com/images/g/qmIAAeSwpAlqeJbs/s-l225.jpg",
       "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
       "category": "gundam",
       "query": "gundam",
       "product_type": "cards"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "international",
-      "title": "Kotobukiya D-Style ZOIDS Blade Liger special limited -Gold plated parts include",
-      "price": 6.5,
-      "shipping": 39.0,
-      "pickup": false,
+      "site": "HLJ.com",
+      "site_type": "retailer",
+      "title": "Zoids Republic Decal Set 1",
+      "price": 4.06,
+      "shipping": null,
       "currency": "USD",
       "condition": "New",
-      "url": "https://www.ebay.com/itm/297687131853?_skw=zoids&hash=item454f8926cd:g:ky0AAOSwlZdkACMO",
-      "image_url": "https://i.ebayimg.com/images/g/ky0AAOSwlZdkACMO/s-l225.jpg",
-      "metadata_text": "Figures Toys & Hobbies Models & Kits",
+      "url": "https://www.hlj.com/zoids-republic-decal-set-1-wavpt-06",
+      "image_url": "https://www.hlj.com/productthumbs/wav/wavpt-06.jpg?v=",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "model_kit"
+      "product_type": "other"
     }
   }
 }
