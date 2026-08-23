@@ -264,7 +264,9 @@ SITE_DEFS = {
         "name": "Plaza Japan",
         "site_type": "retailer",
         "ships_from": "international",
-        "search_url": "https://www.plazajapan.com/catalogsearch/result/?q={q}",
+        # Real URL confirmed directly — the old Magento-style guess was
+        # simply wrong (this site is BigCommerce, not Magento).
+        "search_url": "https://www.plazajapan.com/search-results/?q={q}",
         "base_url": "https://www.plazajapan.com",
         "currency": "USD",
         # BigCommerce platform, not Shopify — confirmed via real HTML
@@ -313,29 +315,21 @@ SITE_DEFS = {
         "name": "HLJ.com",
         "site_type": "retailer",
         "ships_from": "international",
-        # URL and selectors now confirmed against real search-result HTML.
+        # Confirmed prices are injected via JS site-wide (see
+        # scrape_hlj_page) — not scraped via the generic HTML approach at
+        # all anymore. "backend": "hlj_liveprice" routes this to its own
+        # two-step function instead of the item/title/price selectors
+        # below (kept only as historical reference — no longer used).
+        "backend": "hlj_liveprice",
         "search_url": "https://www.hlj.com/search/?Word={q}",
         "base_url": "https://www.hlj.com",
         "currency": "USD",
-        "item_selector": ".search-widget-block",
-        "title_selector": ["p.product-item-name a"],
-        # The bold, prominently-styled price — confirmed against real HTML,
-        # this is the actual charged price (there's a second, non-bold
-        # price span alongside it showing a higher figure, not used here —
-        # unconfirmed exactly what that second one represents, possibly an
-        # MSRP/list-price comparison; worth a closer look if numbers ever
-        # look off for this site).
-        "price_selector": ".bold.stock-left",
-        "link_selector": "p.product-item-name a",
-        "image_selector": ".item-img-wrapper img",
-        # No confirmed sold-out example for this site yet — if one turns
-        # up looking wrong, send its real HTML and I'll add detection.
         "page_param": "Page",
     },
     "gundamplacestore": {
         "name": "Gundam Place Store",
         "site_type": "retailer",
-        "ships_from": "international",  # UNCONFIRMED — verify and correct if wrong
+        "ships_from": "us",
         # Uses Snize, a third-party Shopify search app — confirmed via
         # real HTML (class names like "snize-price-list-price"). The
         # price is split across two separate elements (dollars in one,
@@ -814,6 +808,140 @@ def scrape_searchspring_catalog(query, site_key, max_pages):
 
 
 # ---------------------------------------------------------------------------
+# HLJ.com — confirmed (via View Page Source on both a future-release AND a
+# confirmed in-stock item) that prices are NEVER present in the initial
+# HTML, regardless of stock status — every price is filled in afterward by
+# a JavaScript call to /search/livePrice/, which takes every item code on
+# the page at once and returns pricing + stock status for all of them in
+# a single request. Confirmed: GET request, needs a CSRF token obtained
+# from the search page itself (Django's standard cookie-based CSRF
+# pattern), and returns data for every requested item code together, not
+# one at a time. This needs a real session (cookies carried between the
+# two requests), which is why it's its own function rather than fitting
+# the generic single-fetch model everything else uses.
+# ---------------------------------------------------------------------------
+
+def scrape_hlj_page(query, site, page):
+    url = site["search_url"].format(q=quote_plus(query))
+    if page > 1:
+        url += f"&{site.get('page_param', 'Page')}={page}"
+
+    session = requests.Session()
+    try:
+        resp = session.get(url, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        log.warning(f"    fetch failed for {url}: {e}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    items = {}
+    for block in soup.select(".search-widget-block"):
+        price_span = block.select_one("[id$='_price']")
+        if not price_span or not price_span.get("id"):
+            continue
+        code = price_span["id"].rsplit("_price", 1)[0]
+        title_el = block.select_one("p.product-item-name a")
+        if not title_el:
+            continue
+        link_el = block.select_one(".item-img-wrapper") or title_el
+        href = link_el.get("href") if link_el else None
+        if href and href.startswith("/"):
+            href = site["base_url"] + href
+        image_url = extract_image_url(block, "img", site["base_url"])
+        items[code] = {
+            "title": title_el.get_text(strip=True),
+            "url": href,
+            "image_url": image_url,
+        }
+
+    if not items:
+        return []
+
+    csrf_token = session.cookies.get("csrftoken", "")
+    try:
+        price_resp = session.get(
+            "https://www.hlj.com/search/livePrice/",
+            headers=HEADERS,
+            params={
+                "item_codes": ",".join(items.keys()),
+                "csrfmiddlewaretoken": csrf_token,
+            },
+            timeout=15,
+        )
+        price_resp.raise_for_status()
+        price_data = price_resp.json()
+    except requests.RequestException as e:
+        log.warning(f"    HLJ livePrice request failed: {e}")
+        return []
+    except ValueError:
+        log.warning(
+            f"    HLJ livePrice returned non-JSON — status {price_resp.status_code}, "
+            f"first 200 chars: {price_resp.text[:200]!r}"
+        )
+        return []
+
+    # Response shape (list vs dict-keyed-by-sku) wasn't 100% pinned down —
+    # handle either so this doesn't silently break if it turns out to be
+    # the other shape.
+    price_entries = list(price_data.values()) if isinstance(price_data, dict) else price_data
+    if not isinstance(price_entries, list):
+        log.warning(f"    HLJ livePrice returned an unexpected shape: {type(price_data)}")
+        return []
+
+    results = []
+    skipped_sold_out = 0
+    for entry in price_entries:
+        code = entry.get("sku")
+        if not code or code not in items:
+            continue
+        if entry.get("is_in_stock") is False:
+            skipped_sold_out += 1
+            continue
+        price = parse_price(entry.get("sellPriceNoFormat") or entry.get("priceNoFormat"))
+        if price is None:
+            continue
+        base = items[code]
+        results.append({
+            "site": site["name"],
+            "site_type": site.get("site_type", "retailer"),
+            "title": base["title"],
+            "price": price,
+            "shipping": None,
+            "currency": entry.get("currencyCode", site.get("currency", "USD")),
+            "condition": "New",
+            "url": base["url"],
+            "image_url": base["image_url"],
+        })
+    if skipped_sold_out:
+        log.info(f"    {site['name']} page {page}: skipped {skipped_sold_out} sold-out item(s)")
+    return results
+
+
+def scrape_hlj_catalog(query, site_key, max_pages):
+    site = SITE_DEFS[site_key]
+    all_results = []
+    seen_urls = set()
+    for page in range(1, max_pages + 1):
+        page_results = scrape_hlj_page(query, site, page)
+        if not page_results:
+            break
+        new_count = 0
+        for r in page_results:
+            key = r.get("url") or (r["site"], r["title"], r["price"])
+            if key in seen_urls:
+                continue
+            seen_urls.add(key)
+            all_results.append(r)
+            new_count += 1
+        if new_count == 0:
+            break
+        if page < max_pages:
+            polite_sleep()
+    return all_results
+
+
+# ---------------------------------------------------------------------------
 # eBay — uses the official Browse API (needs a free developer app id/cert id
 # from developer.ebay.com), paginated via offset until `max_results` is hit
 # or eBay reports no more items.
@@ -1030,8 +1158,11 @@ def run():
             # unguarded resp.json() call crashed the entire script. Every
             # per-site call is now isolated like this.
             try:
-                if SITE_DEFS[site_key].get("backend") == "searchspring":
+                backend = SITE_DEFS[site_key].get("backend")
+                if backend == "searchspring":
                     results = scrape_searchspring_catalog(query, site_key, max_pages)
+                elif backend == "hlj_liveprice":
+                    results = scrape_hlj_catalog(query, site_key, max_pages)
                 else:
                     results = scrape_generic_catalog(query, site_key, max_pages)
             except Exception as e:
