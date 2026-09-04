@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T13:15:05.370584+00:00",
+  "generated_at": "2026-09-04T13:14:13.546799+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -16,21 +16,18 @@
       "product_type": "model_kit"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "ZOIDS F/X Oversized Chromium Trading Card  # 1  LIGER ZERO - 2002 - Hasbro",
-      "price": 3.95,
-      "shipping": 8.4,
-      "pickup": false,
+      "site": "HLJ.com",
+      "site_type": "retailer",
+      "title": "Zoids Republic Decal Set 1",
+      "price": 4.13,
+      "shipping": null,
       "currency": "USD",
-      "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/147513958552?_skw=zoids&hash=item2258846098:g:JHUAAeSw2HNqhQGj",
-      "image_url": "https://i.ebayimg.com/images/g/JHUAAeSw2HNqhQGj/s-l225.jpg",
-      "metadata_text": "Trading Card Singles Collectibles Non-Sport Trading Cards",
+      "condition": "New",
+      "url": "https://www.hlj.com/zoids-republic-decal-set-1-wavpt-06",
+      "image_url": "https://www.hlj.com/productthumbs/wav/wavpt-06.jpg?v=",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "cards"
+      "product_type": "other"
     }
   }
 }
