@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T21:02:27.615219+00:00",
+  "generated_at": "2026-10-06T18:51:03.970444+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -16,18 +16,15 @@
       "product_type": "model_kit"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "Tomy Hasbro Zoids Liger Zero X Red Action Figure 2002 *Missing Parts* Incomplete",
-      "price": 2.29,
+      "site": "HLJ.com",
+      "site_type": "retailer",
+      "title": "Zoids Republic Decal Set 1",
+      "price": 4.08,
       "shipping": null,
-      "pickup": false,
       "currency": "USD",
-      "condition": "Used",
-      "url": "https://www.ebay.com/itm/287627532745?_skw=zoids&hash=item42f7efd9c9:g:kvEAAOSwH0dl-msG",
-      "image_url": "https://i.ebayimg.com/images/g/kvEAAOSwH0dl-msG/s-l225.jpg",
-      "metadata_text": "Action Figures Toys & Hobbies Action Figures & Accessories",
+      "condition": "New",
+      "url": "https://www.hlj.com/zoids-republic-decal-set-1-wavpt-06",
+      "image_url": "https://www.hlj.com/productthumbs/wav/wavpt-06.jpg?v=",
       "category": "zoid",
       "query": "zoids",
       "product_type": "other"
