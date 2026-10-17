@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-16T17:15:29.581198+00:00",
+  "generated_at": "2026-10-17T16:13:22.914168+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -18,19 +18,19 @@
     "zoid": {
       "site": "eBay",
       "site_type": "marketplace",
-      "ships_from": "international",
-      "title": "Kotobukiya D-Style ZOIDS Blade Liger special limited -Gold plated parts include",
-      "price": 6.5,
-      "shipping": 39.0,
+      "ships_from": "us",
+      "title": "TOMY ZOIDS 1980's ORIGINAL MINIATURE SILVER PILOT DRIVER SEATED FIGURE VINTAGE",
+      "price": 7.95,
+      "shipping": 3.3,
       "pickup": false,
       "currency": "USD",
-      "condition": "New",
-      "url": "https://www.ebay.com/itm/297687131853?_skw=zoids&hash=item454f8926cd:g:ky0AAOSwlZdkACMO",
-      "image_url": "https://i.ebayimg.com/images/g/ky0AAOSwlZdkACMO/s-l225.jpg",
-      "metadata_text": "Figures Toys & Hobbies Models & Kits",
+      "condition": "Used",
+      "url": "https://www.ebay.com/itm/147010713235?_skw=zoids&hash=item223a857693:g:aCcAAeSwR6BpMml7",
+      "image_url": "https://i.ebayimg.com/images/g/aCcAAeSwR6BpMml7/s-l225.jpg",
+      "metadata_text": "Action Figures Accessories Toys & Hobbies Action Figures & Accessories",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "model_kit"
+      "product_type": "other"
     }
   }
 }
