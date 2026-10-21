@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-20T17:51:07.828208+00:00",
+  "generated_at": "2026-10-21T17:59:18.348184+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -16,18 +16,21 @@
       "product_type": "model_kit"
     },
     "zoid": {
-      "site": "Plaza Japan",
-      "site_type": "retailer",
-      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
-      "price": 7.98,
-      "shipping": null,
+      "site": "eBay",
+      "site_type": "marketplace",
+      "ships_from": "us",
+      "title": "Zoids Hasbro Insert Checklist Advertising Booklet Pamphlet Ad Original Packaging",
+      "price": 3.19,
+      "shipping": 5.99,
+      "pickup": false,
       "currency": "USD",
-      "condition": "New",
-      "url": "https://www.plazajapan.com/4934054109340",
-      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
+      "condition": "Used",
+      "url": "https://www.ebay.com/itm/298373111442?_skw=zoids&hash=item45786c5e92:g:RSgAAeSwsrNqHPpu",
+      "image_url": "https://i.ebayimg.com/images/g/RSgAAeSwsrNqHPpu/s-l225.jpg",
+      "metadata_text": "Action Figures Parts Toys & Hobbies Action Figures & Accessories",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "model_kit"
+      "product_type": "other"
     }
   }
 }
