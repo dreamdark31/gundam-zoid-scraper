@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-21T17:59:18.348184+00:00",
+  "generated_at": "2026-10-22T17:55:33.992714+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -19,15 +19,15 @@
       "site": "eBay",
       "site_type": "marketplace",
       "ships_from": "us",
-      "title": "Zoids Hasbro Insert Checklist Advertising Booklet Pamphlet Ad Original Packaging",
-      "price": 3.19,
-      "shipping": 5.99,
-      "pickup": false,
+      "title": "Zoids Wild Brachios Action Figure",
+      "price": 6.0,
+      "shipping": null,
+      "pickup": true,
       "currency": "USD",
       "condition": "Used",
-      "url": "https://www.ebay.com/itm/298373111442?_skw=zoids&hash=item45786c5e92:g:RSgAAeSwsrNqHPpu",
-      "image_url": "https://i.ebayimg.com/images/g/RSgAAeSwsrNqHPpu/s-l225.jpg",
-      "metadata_text": "Action Figures Parts Toys & Hobbies Action Figures & Accessories",
+      "url": "https://www.ebay.com/itm/800819389164?_skw=zoids&hash=itemba748e22ec:g:PPoAAeSwv4hq2Cab",
+      "image_url": "https://i.ebayimg.com/images/g/PPoAAeSwv4hq2Cab/s-l225.jpg",
+      "metadata_text": "Action Figures Toys & Hobbies Action Figures & Accessories",
       "category": "zoid",
       "query": "zoids",
       "product_type": "other"
