@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T17:55:33.992714+00:00",
+  "generated_at": "2026-10-23T17:47:42.947239+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -16,21 +16,18 @@
       "product_type": "model_kit"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "Zoids Wild Brachios Action Figure",
-      "price": 6.0,
+      "site": "Plaza Japan",
+      "site_type": "retailer",
+      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
+      "price": 8.06,
       "shipping": null,
-      "pickup": true,
       "currency": "USD",
-      "condition": "Used",
-      "url": "https://www.ebay.com/itm/800819389164?_skw=zoids&hash=itemba748e22ec:g:PPoAAeSwv4hq2Cab",
-      "image_url": "https://i.ebayimg.com/images/g/PPoAAeSwv4hq2Cab/s-l225.jpg",
-      "metadata_text": "Action Figures Toys & Hobbies Action Figures & Accessories",
+      "condition": "New",
+      "url": "https://www.plazajapan.com/4934054109340",
+      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "other"
+      "product_type": "model_kit"
     }
   }
 }
