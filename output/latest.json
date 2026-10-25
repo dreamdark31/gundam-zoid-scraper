@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T16:30:49.732122+00:00",
+  "generated_at": "2026-10-25T17:02:13.380221+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "Plaza Japan",
@@ -16,18 +16,15 @@
       "product_type": "model_kit"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "1987 TOMY Jr Zoids JZ-02 Gojulas Vintage Figure Incomplete Parts Repair Japan",
-      "price": 7.0,
+      "site": "Plaza Japan",
+      "site_type": "retailer",
+      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
+      "price": 8.06,
       "shipping": null,
-      "pickup": false,
       "currency": "USD",
-      "condition": "Used",
-      "url": "https://www.ebay.com/itm/227512794433?_skw=zoids&hash=item34f8d1bd41:g:NB8AAeSw3hBqoIYW",
-      "image_url": "https://i.ebayimg.com/images/g/NB8AAeSw3hBqoIYW/s-l225.jpg",
-      "metadata_text": "1970-Now Toys & Hobbies Robots, Monsters & Space Toys Robots",
+      "condition": "New",
+      "url": "https://www.plazajapan.com/4934054109340",
+      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
       "category": "zoid",
       "query": "zoids",
       "product_type": "model_kit"
