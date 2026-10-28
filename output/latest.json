@@ -1,36 +1,36 @@
 {
-  "generated_at": "2026-10-27T18:38:15.140178+00:00",
+  "generated_at": "2026-10-28T18:43:56.251283+00:00",
   "cheapest_by_category": {
     "gundam": {
-      "site": "Plaza Japan",
-      "site_type": "retailer",
-      "title": "Bandai Gundam Decal No.38 for HGUC 1/144 MS Principality of Zeon (3)",
-      "price": 2.59,
-      "shipping": null,
-      "currency": "USD",
-      "condition": "New",
-      "url": "https://www.plazajapan.com/4573102611406",
-      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/85566/images/287443/4573102611406_5856d9a3991e3a282ed20f9ee13bd1d8__73951.1611214379.350.350.jpg?c=2",
-      "category": "gundam",
-      "query": "gundam",
-      "product_type": "model_kit"
-    },
-    "zoid": {
       "site": "eBay",
       "site_type": "marketplace",
       "ships_from": "us",
-      "title": "Zoids FX Sticker Collection 1 Liger Zero Pioneer Promo Sticker Pair",
-      "price": 3.98,
-      "shipping": 0.95,
+      "title": "Gundam Maxter GD05-069 TCG Rare Holo GD05 NM",
+      "price": 1.99,
+      "shipping": 0.0,
       "pickup": false,
       "currency": "USD",
-      "condition": "Used",
-      "url": "https://www.ebay.com/itm/206655573043?_skw=zoids&hash=item301da1cc33:g:KUkAAeSwnkFqpbx~",
-      "image_url": "https://i.ebayimg.com/images/g/KUkAAeSwnkFqpbx~/s-l225.jpg",
-      "metadata_text": "Decals & Stickers Collectibles Transportation Automobilia",
+      "condition": "Ungraded",
+      "url": "https://www.ebay.com/itm/800627892292?_skw=gundam&hash=itemba69242044:g:mOAAAeSwVDVqnz2g",
+      "image_url": "https://i.ebayimg.com/images/g/mOAAAeSwVDVqnz2g/s-l225.jpg",
+      "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
+      "category": "gundam",
+      "query": "gundam",
+      "product_type": "cards"
+    },
+    "zoid": {
+      "site": "Plaza Japan",
+      "site_type": "retailer",
+      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
+      "price": 8.0,
+      "shipping": null,
+      "currency": "USD",
+      "condition": "New",
+      "url": "https://www.plazajapan.com/4934054109340",
+      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "other"
+      "product_type": "model_kit"
     }
   }
 }
