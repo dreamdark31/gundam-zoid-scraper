@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-29T18:52:42.483459+00:00",
+  "generated_at": "2026-10-30T18:29:29.996720+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
       "site_type": "marketplace",
       "ships_from": "us",
-      "title": "Freedom Gundam GD03-070 LR Unit Foil English Gundam Card Game",
-      "price": 2.49,
+      "title": "Char's Zaku II Foil - GD01-026 NM - Gundam TCG Card Game",
+      "price": 2.2,
       "shipping": 0.0,
       "pickup": false,
       "currency": "USD",
       "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/168812706805?_skw=gundam&hash=item274e057bf5:g:5JEAAeSw6gpq3AX~",
-      "image_url": "https://i.ebayimg.com/images/g/5JEAAeSw6gpq3AX~/s-l225.jpg",
+      "url": "https://www.ebay.com/itm/146739210098?_skw=gundam&hash=item222a56a772:g:SCEAAeSwU~5oiD-B",
+      "image_url": "https://i.ebayimg.com/images/g/SCEAAeSwU~5oiD-B/s-l225.jpg",
       "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
       "category": "gundam",
       "query": "gundam",
@@ -21,19 +21,19 @@
     "zoid": {
       "site": "eBay",
       "site_type": "marketplace",
-      "ships_from": "international",
-      "title": "Kotobukiya D-Style ZOIDS Blade Liger special limited -Gold plated parts include",
-      "price": 6.5,
-      "shipping": 39.0,
+      "ships_from": "us",
+      "title": "Zoids FX Sticker Collection 1 Liger Zero Pioneer Promo Sticker Pair",
+      "price": 3.98,
+      "shipping": 0.95,
       "pickup": false,
       "currency": "USD",
-      "condition": "New",
-      "url": "https://www.ebay.com/itm/297687131853?_skw=zoids&hash=item454f8926cd:g:ky0AAOSwlZdkACMO",
-      "image_url": "https://i.ebayimg.com/images/g/ky0AAOSwlZdkACMO/s-l225.jpg",
-      "metadata_text": "Figures Toys & Hobbies Models & Kits",
+      "condition": "Used",
+      "url": "https://www.ebay.com/itm/206655573043?_skw=zoids&hash=item301da1cc33:g:KUkAAeSwnkFqpbx~",
+      "image_url": "https://i.ebayimg.com/images/g/KUkAAeSwnkFqpbx~/s-l225.jpg",
+      "metadata_text": "Decals & Stickers Collectibles Transportation Automobilia",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "model_kit"
+      "product_type": "other"
     }
   }
 }
