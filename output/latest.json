@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T22:56:57.573833+00:00",
+  "generated_at": "2026-11-10T20:18:21.099906+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
@@ -21,19 +21,19 @@
     "zoid": {
       "site": "eBay",
       "site_type": "marketplace",
-      "ships_from": "international",
-      "title": "Kotobukiya D-Style ZOIDS Blade Liger special limited -Gold plated parts include",
-      "price": 6.5,
-      "shipping": 39.0,
+      "ships_from": "us",
+      "title": "Zoids Gordos RBoz-G04 Double Canon + Surface to Air Double Cannon (1983, Tomy)",
+      "price": 3.56,
+      "shipping": null,
       "pickup": false,
       "currency": "USD",
-      "condition": "New",
-      "url": "https://www.ebay.com/itm/297687131853?_skw=zoids&hash=item454f8926cd:g:ky0AAOSwlZdkACMO",
-      "image_url": "https://i.ebayimg.com/images/g/ky0AAOSwlZdkACMO/s-l225.jpg",
-      "metadata_text": "Figures Toys & Hobbies Models & Kits",
+      "condition": "Used",
+      "url": "https://www.ebay.com/itm/257842565165?_skw=zoids&hash=item3c089d502d:g:hTYAAOSwMXVnMkYV",
+      "image_url": "https://i.ebayimg.com/images/g/hTYAAOSwMXVnMkYV/s-l225.jpg",
+      "metadata_text": "Action Figures Accessories Toys & Hobbies Action Figures & Accessories",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "model_kit"
+      "product_type": "other"
     }
   }
 }
