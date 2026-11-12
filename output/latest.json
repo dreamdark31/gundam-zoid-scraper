@@ -1,39 +1,36 @@
 {
-  "generated_at": "2026-11-11T20:04:41.912666+00:00",
+  "generated_at": "2026-11-12T20:43:38.698094+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
       "site_type": "marketplace",
       "ships_from": "us",
-      "title": "x1 Gundam Heavyarms Custom (EW) - GD06-068 - Rare - Holofoil CFV M/NM",
-      "price": 1.93,
+      "title": "(2 Card Minimum) - Gundam: Stardust Trails - GD06 - 40% off 4 or more! Rare",
+      "price": 1.59,
       "shipping": 0.0,
       "pickup": false,
       "currency": "USD",
       "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/940053397252?_skw=gundam&hash=itemdadf8c7f04:g:ssgAAeSwtBBq5TE2",
-      "image_url": "https://i.ebayimg.com/images/g/ssgAAeSwtBBq5TE2/s-l225.jpg",
+      "url": "https://www.ebay.com/itm/940061345101?_skw=gundam&hash=itemdae005c54d:g:AmwAAeSwm5Nq6Upz",
+      "image_url": "https://i.ebayimg.com/images/g/AmwAAeSwm5Nq6Upz/s-l225.jpg",
       "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
       "category": "gundam",
       "query": "gundam",
       "product_type": "cards"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "2002 Hasbro Tomy Zoids Gun Sniper Dinosaur Velociraptor",
-      "price": 3.19,
+      "site": "Plaza Japan",
+      "site_type": "retailer",
+      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
+      "price": 7.92,
       "shipping": null,
-      "pickup": false,
       "currency": "USD",
-      "condition": "Used",
-      "url": "https://www.ebay.com/itm/168852921447?_skw=zoids&hash=item27506b1c67:g:kOsAAeSwntFq82Ek",
-      "image_url": "https://i.ebayimg.com/images/g/kOsAAeSwntFq82Ek/s-l225.jpg",
-      "metadata_text": "Action Figures Toys & Hobbies Action Figures & Accessories",
+      "condition": "New",
+      "url": "https://www.plazajapan.com/4934054109340/",
+      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "other"
+      "product_type": "model_kit"
     }
   }
 }
