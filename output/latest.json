@@ -1,36 +1,39 @@
 {
-  "generated_at": "2026-11-14T18:43:36.216796+00:00",
+  "generated_at": "2026-11-15T19:18:48.111561+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
       "site_type": "marketplace",
       "ships_from": "us",
-      "title": "Gundam Stardust Trails GD06 Singles - Your Pick!",
-      "price": 1.0,
-      "shipping": 0.0,
+      "title": "Gundam Card Game Gaia Gundam GD05-034 Unit LR",
+      "price": 0.99,
+      "shipping": null,
       "pickup": false,
       "currency": "USD",
       "condition": "Ungraded",
-      "url": "https://www.ebay.com/itm/336871448785?_skw=gundam&hash=item4e6f1a60d1:g:~fUAAeSwZW5q6n00",
-      "image_url": "https://i.ebayimg.com/images/g/~fUAAeSwZW5q6n00/s-l225.jpg",
+      "url": "https://www.ebay.com/itm/287731883803?_skw=gundam&hash=item42fe281f1b:g:ts4AAeSw9T9q-gJS",
+      "image_url": "https://i.ebayimg.com/images/g/ts4AAeSw9T9q-gJS/s-l225.jpg",
       "metadata_text": "CCG Individual Cards Toys & Hobbies Collectible Card Games",
       "category": "gundam",
       "query": "gundam",
       "product_type": "cards"
     },
     "zoid": {
-      "site": "Plaza Japan",
-      "site_type": "retailer",
-      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
-      "price": 7.91,
+      "site": "eBay",
+      "site_type": "marketplace",
+      "ships_from": "us",
+      "title": "Zoids Gordos RBoz-G04 Double Canon + Surface to Air Double Cannon (1983, Tomy)",
+      "price": 3.56,
       "shipping": null,
+      "pickup": false,
       "currency": "USD",
-      "condition": "New",
-      "url": "https://www.plazajapan.com/4934054109340/",
-      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
+      "condition": "Used",
+      "url": "https://www.ebay.com/itm/257842565165?_skw=zoids&hash=item3c089d502d:g:hTYAAOSwMXVnMkYV",
+      "image_url": "https://i.ebayimg.com/images/g/hTYAAOSwMXVnMkYV/s-l225.jpg",
+      "metadata_text": "Action Figures Accessories Toys & Hobbies Action Figures & Accessories",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "model_kit"
+      "product_type": "other"
     }
   }
 }
