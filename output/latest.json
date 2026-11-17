@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-16T22:48:38.373895+00:00",
+  "generated_at": "2026-11-17T21:34:58.850085+00:00",
   "cheapest_by_category": {
     "gundam": {
       "site": "eBay",
@@ -19,21 +19,18 @@
       "product_type": "cards"
     },
     "zoid": {
-      "site": "eBay",
-      "site_type": "marketplace",
-      "ships_from": "us",
-      "title": "Gold Tomy Zoids Pilot 1980s",
-      "price": 7.0,
-      "shipping": 0.0,
-      "pickup": false,
+      "site": "Plaza Japan",
+      "site_type": "retailer",
+      "title": "Kotobukiya HMM Zoids 1/72 Customize Parts Pile Bunker Unit Plastic Model",
+      "price": 7.92,
+      "shipping": null,
       "currency": "USD",
-      "condition": "Used",
-      "url": "https://www.ebay.com/itm/206674475390?_skw=zoids&hash=item301ec2397e:g:EpEAAeSwiw9q6uE3",
-      "image_url": "https://i.ebayimg.com/images/g/EpEAAeSwiw9q6uE3/s-l225.jpg",
-      "metadata_text": "Action Figures Toys & Hobbies Action Figures & Accessories",
+      "condition": "New",
+      "url": "https://www.plazajapan.com/4934054109340/",
+      "image_url": "https://cdn11.bigcommerce.com/s-89ffd/products/93753/images/342555/4934054109340_2ce6369db9f342f025acd62367dfacd5__98931.1638346675.350.350.jpg?c=2",
       "category": "zoid",
       "query": "zoids",
-      "product_type": "other"
+      "product_type": "model_kit"
     }
   }
 }
